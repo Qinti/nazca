@@ -1,0 +1,17 @@
+{
+  "name": "nazca",
+  "version": "1.0.0",
+  "description": "A great new way of creating GUI in the web",
+  "main": "compile.js",
+  "dependencies": {
+    "jshint": "^2.11.1",
+    "lodash": "^4.17.15",
+    "node-html-parser": "^1.2.18"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Q'inti",
+  "license": "MIT"
+}

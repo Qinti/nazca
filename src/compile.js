@@ -112,7 +112,7 @@ function compile(file, name, out) {
             classIndex = classless.indexOfCode('class ');
         }
 
-        hierarchy_ = {children: getChildren(classless)};
+        hierarchy_ = {children: tools.getChildren(classless)};
     }).then(() => {
         // 4. Starting generating the html/css/js
         // 5. Go through the classes - define css classes with properties
@@ -521,18 +521,6 @@ function getHTMLObject(object, indent = 0) {
     html += `${spaces}</${element}>\n`;
 
     return html;
-}
-
-function getChildren(content) {
-    let elementIndex = content.regexIndexOf(/[.a-zA-Z_\d]+/);
-    let children = [];
-    while (elementIndex >= 0) {
-        let child = tools.getNextChild(content, elementIndex);
-        children.push(child);
-        elementIndex = content.regexIndexOf(/[.a-zA-Z_\d]+/, child.end);
-    }
-
-    return children;
 }
 
 function recursivelyInclude(file) {

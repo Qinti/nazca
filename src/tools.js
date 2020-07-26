@@ -2,106 +2,170 @@ let idCounter = 0;
 const alphabet = '_abcdefghijklmnopqrstuvwxyz';
 const cssProperties = require('./cssProperties');
 
+const reObject = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}{/i;
+const reVariable = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}.{0,};/i;
+const reMethod = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}\([a-z_\d,\s]{0,}\)\s{0,}{/i;
+const reChild = /^{?[\s\n]{0,}[.a-z][a-z\d.]+\s{0,}{/i;
+
 String.prototype.regexIndexOf = function (regex, startIndex = 0) {
     let indexOf = this.substring(startIndex).search(regex);
     return (indexOf >= 0) ? (indexOf + startIndex) : indexOf;
 };
 
-function addQuotes(str) {
+global.stringMap = global.stringMap || {};
+
+//TODO: build full global.stringMap here. It should check all comments, quotes and :; as well. IndexOfCode will just check inString()
+function buildStrings(str) {
     let index = 0;
-    let stringOpening = 0;
-    let stringClosing = 0;
+    let stringArray = [];
 
-    while (index >= 0 && stringOpening >= 0 && stringClosing >= 0) {
-        stringOpening = str.indexOf(':', index + 1);
-        if (!str.slice(index + 1, stringOpening).trim().length) {
-            index = stringOpening + 1;
-            continue;
-        }
-        while (stringOpening >= 0 && str.charAt(stringOpening - 1) === '\\') {
-            stringOpening = str.indexOf(':', stringOpening + 1);
-        }
-        if (stringOpening < 0) {
-            break;
-        }
+    const quoteRegex = /['"\/`:]/;
+    let closeSymbol, stringOpening, stringClosing;
+    let isBlockComment = false;
+    const closeSymbolMap = {':': ';'};
+    ['"', "'", '/', '`'].forEach((symbol) => {
+        closeSymbolMap[symbol] = symbol
+    });
 
-        stringClosing = str.indexOf(';', stringOpening);
-        while (stringClosing >= 0 && str.charAt(stringClosing - 1) === '\\') {
-            stringClosing = str.indexOf(':', stringClosing + 1);
-        }
-        if (stringClosing < 0) {
-            break;
-        }
+    for (let i = 0, n = str.length; i < n; i++) {
+        let character = str.charAt(i);
+        if (closeSymbol) {
+            if ((character === closeSymbol || str.charCodeAt(i) === closeSymbol) && !/\\/.test(str.charAt(i - 1))) {
+                if (isBlockComment && str.charAt(i - 1) !== '*') {
+                    continue;
+                }
 
-        stringOpening++;
-        stringClosing--;
-
-        while (str.charAt(stringOpening) === ' ') {
-            stringOpening++;
-        }
-
-        while (str.charAt(stringOpening) === ' ') {
-            stringClosing--;
-        }
-
-        //for methods
-        if (str.charAt(stringOpening) === '(') {
-            let methodStart = str.indexOfCode('{', stringOpening);
-            let methodEnd = findClosingBracket(str, methodStart + 1);
-            if (methodEnd < 0) {
-                return str;
+                stringClosing = i;
+                console.log(`${stringOpening} - ${stringClosing} ${str.slice(stringOpening, stringClosing)}`);
+                i = addString() + 1;
+                closeSymbol = null;
+                isBlockComment = false;
             }
-            index = methodEnd + 1;
-            continue;
-        }
+        } else {
+            if (quoteRegex.test(character)) {
+                // skip states
+                if (character === ':') {
+                    let k = i - 1;
+                    while (k > 0 && /[\n\s\t]/.test(str.charAt(k))) {
+                        k--;
+                    }
+                    if (str.charAt(k) === ';') {
+                        continue;
+                    }
+                }
 
-        // for objects
-        if (str.charAt(stringOpening) === '{') {
-            let objectEnd = findClosingBracket(str, stringOpening + 1);
-            if (objectEnd < 0) {
-                return str;
+                closeSymbol = closeSymbolMap[character];
+                if (character === '/' && str.charAt(i + 1) === '/') {
+                    closeSymbol = 13;
+                }
+
+                if (closeSymbol === '/' && str.charAt(i + 1) === '*') {
+                    isBlockComment = true;
+                }
+                stringOpening = i;
             }
-
-            let replacedObject = addQuotes(str.slice(stringOpening, objectEnd + 1));
-            str = `${str.slice(0, stringOpening)}${replacedObject}${str.slice(objectEnd + 1)}`;
-
-            index += stringOpening + replacedObject.length + 1;
-
-            continue;
         }
-
-        str = `${str.slice(0, stringOpening)}'${str.slice(stringOpening, stringClosing + 1)}'${str.slice(stringClosing + 1)}`;
-        index = stringClosing + 3;
     }
+
+    function addString() {
+        if (closeSymbol === ';') {
+            stringOpening++;
+
+            while (str.charAt(stringOpening) === ' ') {
+                stringOpening++;
+            }
+
+            while (str.charAt(stringOpening) === ' ') {
+                stringClosing--;
+            }
+
+            //for methods
+            if (str.charAt(stringOpening) === '(') {
+                let methodStart = str.indexOf('{', stringOpening);
+                let methodEnd = findClosingBracket(str, methodStart) + 1;
+                if (methodEnd < 0) {
+                    return methodStart;
+                }
+                return methodEnd + 1;
+            }
+
+            // for objects
+            if (str.charAt(stringOpening) === '{') {
+                let objectEnd = findClosingBracket(str, stringOpening);
+                if (objectEnd < 0) {
+                    return stringOpening;
+                }
+
+                let subString = str.slice(stringOpening, objectEnd + 1);
+                subString = buildStrings(subString);
+                for (let t = 0, p = global.stringMap[subString].length; t < p; t++) {
+                    if (global.stringMap[subString][t]) {
+                        stringArray[t + stringOpening] = 1;
+                    }
+                }
+
+                return stringOpening + subString.length + 1;
+            }
+        }
+
+        let final = stringClosing;
+        if (str.charAt(final) === ';') {
+            final--;
+        }
+        for (let k = stringOpening; k < final + 1; k++) {
+            stringArray[k] = 1;
+        }
+
+        return stringClosing;
+    }
+
+    setStrings(str, stringArray);
 
     return str;
 }
 
-String.prototype.indexOfCode = function (pattern, startIndex = 0, withRegex = true) {
-    let closeSymbol;
-    const quoteRegex = /['"\/`]/;
-    let k = 0;
-    const patternLength = pattern.length;
-    for (let i = startIndex, n = this.length; i < n; i++) {
-        if (closeSymbol) {
-            if (this.charAt(i) === closeSymbol && !/\\/.test(this.charAt(i - 1))) {
-                closeSymbol = null;
-            }
-        } else {
-            if (this.charAt(i) === pattern.charAt(k++)) {
-                if (k === patternLength) {
-                    return i - patternLength + 1;
-                }
-            } else {
-                k = 0;
-                if (quoteRegex.test(this.charAt(i))) {
-                    closeSymbol = this.charAt(i);
-                }
-            }
+function outInStrings(str) {
+    let start, end;
+    let out = '';
+    let styles = [];
+
+    for (let i = 0; i < str.length; i++) {
+        if (global.stringMap[str][i] === 1 && !start) {
+            start = i;
+            out += '%c';
+            styles.push('color:green');
+        } else if (global.stringMap[str][i] !== 1 && start) {
+            end = i - 1;
+            start = null;
+            out += '%c';
+            styles.push('color:white');
         }
+
+        out += str.charAt(i);
     }
 
-    return -1;
+    console.log(out, ...styles);
+}
+
+function inString(str, index) {
+    if (global.stringMap[str]) {
+        return !!global.stringMap[str][index];
+    }
+
+    return false;
+}
+
+function setStrings(str, stringArray) {
+    global.stringMap[str] = stringArray;
+}
+
+String.prototype.indexOfCode = function (pattern, startIndex = 0) {
+    let index = this.indexOf(pattern, startIndex);
+    while (index >= 0 && inString(this, index)) {
+        index = this.indexOf(pattern, index + 1);
+    }
+
+    return index;
 };
 
 String.prototype.splitLines = function () {
@@ -182,7 +246,6 @@ function calculateLineColumn(content, position) {
 }
 
 function getClassMap(content, startIndex) {
-    let classDeclarations = [];
     let classMap = {};
     let start = content.indexOfCode('class ', startIndex);
     while (start >= 0) {
@@ -198,7 +261,7 @@ function getClassMap(content, startIndex) {
             };
         }
 
-        if (!/[a-z\d\s>]/i.test(content.slice(start, openBracket - 1))) {
+        if (!/^class ([a-z_$][a-z\d_$]+)(\s{0,}<\s{0,}[a-z_$][a-z_\d$]+){0,}\s{0,}{/i.test(content.slice(start, openBracket + 1))) {
             let [line1, column1] = calculateLineColumn(content, start);
             let [line2, column2] = calculateLineColumn(content, openBracket);
             throw {
@@ -214,7 +277,7 @@ function getClassMap(content, startIndex) {
         if (closingBracket < 0) {
             let [line, column] = calculateLineColumn(content, start);
             throw {
-                message: 'Missing { for class definition',
+                message: 'Missing } for class definition',
                 line,
                 column: column + 5,
                 index: start + 5,
@@ -222,11 +285,11 @@ function getClassMap(content, startIndex) {
             };
         }
 
-        classDeclarations.push(content.slice(start, closingBracket + 1));
+        parseClass(content.slice(start, closingBracket + 1), start);
         start = content.indexOfCode('class ', closingBracket + 1);
     }
 
-    classDeclarations.forEach((classDeclaration) => {
+    function parseClass(classDeclaration, start) {
         let firstBracket = classDeclaration.indexOfCode('{');
         let declaration = classDeclaration.slice(0, firstBracket);
         declaration = declaration.replace('class ', '').replace('{', '');
@@ -243,13 +306,13 @@ function getClassMap(content, startIndex) {
             getters: {},
             eventHandlers: {},
             states: {},
-            methods: {private: {}, protected: {}, public: {}}
+            methods: {private: {}, protected: {}, public: {}},
+            children: []
         };
 
-        let properties = [];
         let property;
         try {
-            property = parseProperty(classDeclaration, firstBracket);
+            property = parseNextProperty(firstBracket);
         } catch (e) {
             Object.assign(e, {classMap});
             throw e;
@@ -267,13 +330,58 @@ function getClassMap(content, startIndex) {
             };
             if (property.type === 'variable' || property.type === 'method') {
                 classMap[className][typeMap[property.type]][property.access][property.name] = property.value;
-            } else {
+            } else if (property.type !== 'child') {
                 classMap[className][typeMap[property.type]][property.name] = property.value;
+            } else {
+                classMap[className].children.push(property);
             }
 
-            property = parseProperty(classDeclaration, property.index + 2);
+            try {
+                property = parseNextProperty((property.index || property.end) - start + 2);
+            } catch (e) {
+                Object.assign(e, {classMap});
+                throw e;
+            }
         }
-    });
+
+        function parseNextProperty(index) {
+            let nextProperty = classDeclaration.slice(index).trim();
+            if (!nextProperty || nextProperty === '}') {
+                return null;
+            }
+
+            if (nextProperty.charAt(0) === '/') {
+                if (nextProperty.charAt(1) === '/') {
+                    index = classDeclaration.indexOf('//', index);
+                    index = classDeclaration.indexOf('\n', index);
+                } else {
+                    index = classDeclaration.indexOf('/*', index);
+                    index = classDeclaration.indexOf('*/', index);
+                }
+                return parseNextProperty(index);
+            }
+
+            if (reMethod.test(nextProperty) || reObject.test(nextProperty) || reVariable.test(nextProperty)) {
+                return parseProperty(content, start + index);
+            } else if (reChild.test(nextProperty)) {
+                return getNextChild(content, start + index);
+            } else {
+                let [line1, column1] = calculateLineColumn(content, start + index);
+                let nextColon = content.indexOfCode(';', start + index);
+                if (nextColon < 0) {
+                    nextColon = content.length - 1;
+                }
+                let [line2, column2] = calculateLineColumn(content, nextColon);
+
+                throw {
+                    message: 'The property is invalid',
+                    line: line1 === line2 ? line1 : [line1, line2],
+                    column: [column1, column2],
+                    index: nextColon
+                };
+            }
+        }
+    }
 
     return classMap;
 }
@@ -324,15 +432,16 @@ function parseProperty(content, index) {
         let bodyEnd = findClosingBracket(content, bodyStart);
         let body = content.slice(bodyStart, bodyEnd + 1);
 
-        value = {parameters, body};
+        value = {parameters, body, boundaries: [bodyStart, bodyEnd]};
         index = bodyEnd + 1;
     } else if (afterName[0] === '{') {
+        type = 'variable';
         let bodyStart = content.indexOfCode('{', nameEnd + 1);
         let bodyEnd = findClosingBracket(content, bodyStart);
         let body = content.slice(bodyStart, bodyEnd + 1);
         index = bodyEnd + 1;
         value = body;
-    } else if (afterName[0] === `'`) {
+    } else {
         let nextColon = content.indexOfCode(';', nameEnd + 1);
         while (content[nextColon - 1] === '\\') {
             nextColon = content.indexOfCode(';', nextColon + 1);
@@ -350,15 +459,6 @@ function parseProperty(content, index) {
         value = content.slice(nameEnd, nextColon + 1).trim();
         type = 'variable';
         index = nextColon;
-    } else {
-        let [line, column] = calculateLineColumn(content, nameEnd + 1);
-        throw {
-            message: `Variable value is incorrect. Should be function, object or string`,
-            line,
-            column,
-            index: nameEnd + 1,
-            classMap
-        };
     }
 
     const operatorMap = {
@@ -399,11 +499,12 @@ function parseProperty(content, index) {
 }
 
 function getNextChild(content, index = 0) {
-    let elementIndex = content.regexIndexOf(/[.a-zA-Z_\d]+/, index);
+    let elementIndex = findChildIndex(content, index);
     let openingBracket = content.indexOfCode('{', elementIndex);
     let semiColon = content.indexOfCode(';', elementIndex);
-    let closingBracket = findClosingBracket(content, openingBracket + 1);
+    let closingBracket = findClosingBracket(content, openingBracket);
     let declaration = content.slice(index, Math.min(openingBracket, semiColon)).trim();
+
     let children = [];
     let classes = declaration.split('.');
     let name = classes.shift();
@@ -449,7 +550,7 @@ function getNextChild(content, index = 0) {
             } else {
                 properties[typeMap[property.type]][property.name] = property.value;
             }
-            nextChildEnd = property.index + 1;
+            nextChildEnd = property.index + 2;
         } else {
             let nextChild = getNextChild(content, nextChildEnd);
             nextChildEnd = nextChild.end + 1;
@@ -462,14 +563,111 @@ function getNextChild(content, index = 0) {
         nextOpeningBracket = Math.min(nextOpeningBracket, nextSemiColon);
     }
 
-    return {start: elementIndex, end: closingBracket + 1, name, classes, children, properties};
+    return Object.assign({
+        start: elementIndex,
+        end: closingBracket + 1,
+        name,
+        classes,
+        children,
+        type: 'child'
+    }, properties);
+}
+
+function getChildren(content, index = 0) {
+    const reInclude = /^\*include/;
+    const reClass = /^class /;
+    const reComment = /^\/\//;
+    const reBlockComment = /^\/\*/;
+    let children = [];
+
+    let nextWord = content.slice(index).trim();
+    while (index >= 0 && nextWord) {
+        if (reInclude.test(nextWord)) {
+            index = content.indexOfCode(';', index) + 1;
+        } else if (reClass.test(nextWord)) {
+            let openingBracket = content.indexOfCode('{', index);
+            let closingBracket = content.indexOfCode('}', index);
+            if (closingBracket < openingBracket) {
+                let previousIndex = index;
+                index = content.indexOf(';', closingBracket) + 1;
+                let [line1, column1] = calculateLineColumn(content, previousIndex);
+                let [line2, column2] = calculateLineColumn(content, index);
+                throw {
+                    message: `Class should have an opening bracket`,
+                    line: line1 === line2 ? line1 : [line1, line2],
+                    column: [column1, column2],
+                    index,
+                    children
+                };
+            }
+
+            closingBracket = findClosingBracket(content, openingBracket);
+            index = closingBracket + 2;
+        } else if (reComment.test(nextWord)) {
+            index = content.indexOf('//', index);
+            index = content.indexOf('\n', index + 2) + 1;
+        } else if (reBlockComment.test(nextWord)) {
+            index = content.indexOf('*/', index + 2) + 2
+        } else if (reChild.test(nextWord)) {
+            let child = getNextChild(content, index);
+            children.push(child);
+            index = child.end + 1;
+        } else if (nextWord === '}') {
+            break;
+        } else {
+            let nextSemiColon = content.indexOf(';', index);
+            let [line1, column1] = calculateLineColumn(content, index);
+            let [line2, column2] = calculateLineColumn(content, nextSemiColon);
+            throw {
+                message: `The statement is not recognized. Should be *include, class or hierarchy`,
+                line: line1 === line2 ? line1 : [line1, line2],
+                column: [column1, column2],
+                index: nextSemiColon + 1,
+                children
+            };
+        }
+
+        nextWord = content.slice(index).trim();
+    }
+
+    return children;
+}
+
+function findChildIndex(content, index) {
+    let closeSymbol;
+    const quoteRegex = /['"\/`]/;
+    if (index < 0) {
+        return -1;
+    }
+    for (let i = index, n = content.length; i < n; i++) {
+        if (closeSymbol) {
+            if (content.charAt(i) === closeSymbol && !/\\/.test(content.charAt(i - 1))) {
+                closeSymbol = null;
+            }
+        } else if (quoteRegex.test(content.charAt(i))) {
+            closeSymbol = content.charAt(i);
+        } else {
+            if (/[.a-z_\-\d]/i.test(content.charAt(i))) {
+                return i;
+            } else if (0) {
+
+            } else if (!/[\t\s\n]/i.test(content.charAt(i))) {
+                let [line, column] = calculateLineColumn(content, i);
+                throw {message: `Unexpected symbol '${content.charAt(i)}'`, line, column};
+            }
+        }
+    }
+
+    return -1;
 }
 
 module.exports = {
-    addQuotes,
+    buildStrings,
     findClosingBracket,
     nextID,
     getClassMap,
-    getNextChild,
-    calculateLineColumn
+    calculateLineColumn,
+    getChildren,
+    outInStrings,
+    inString
 };
