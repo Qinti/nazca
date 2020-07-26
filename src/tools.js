@@ -261,7 +261,7 @@ function getClassMap(content, startIndex) {
             };
         }
 
-        if (!/^class ([a-z_$][a-z\d_$]+)(\s{0,}<\s{0,}[a-z_$][a-z_\d$]+){0,}\s{0,}{/i.test(content.slice(start, openBracket + 1))) {
+        if (!/^class ([a-z_$][a-z\d_$]+)(?:\s*<\s*[a-z_$][a-z_\d$]*)*\s*{/i.test(content.slice(start, openBracket + 1))) {
             let [line1, column1] = calculateLineColumn(content, start);
             let [line2, column2] = calculateLineColumn(content, openBracket);
             throw {
@@ -293,7 +293,7 @@ function getClassMap(content, startIndex) {
         let firstBracket = classDeclaration.indexOfCode('{');
         let declaration = classDeclaration.slice(0, firstBracket);
         declaration = declaration.replace('class ', '').replace('{', '');
-        let hierarchy = declaration.split('>');
+        let hierarchy = declaration.split('<');
 
         let className = hierarchy.shift().trim();
         let parents = hierarchy.map((cls) => cls.trim());
@@ -523,7 +523,7 @@ function getNextChild(content, index = 0) {
     };
 
     if (semiColon < openingBracket) {
-        return {start: elementIndex, end: semiColon + 1, name, classes, children, properties};
+        return Object.assign({start: elementIndex, end: semiColon + 1, name, classes, children}, properties);
     }
 
     let nextChildEnd = openingBracket + 1;

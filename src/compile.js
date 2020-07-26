@@ -151,8 +151,6 @@ function compile(file, name, out) {
         head.appendChild(`<script src="${out.js}/${name}.js"></script>`);
         head.appendChild(`<link rel="stylesheet" type="text/css" href="${out.css}/${name}.css">`);
         html_ = root.innerHTML;
-        ``
-
     }).then(() => {
         // 7. Go though the classes - generate functions (JS classes)
 
@@ -161,7 +159,6 @@ function compile(file, name, out) {
             let body = getClassCode(className, clss);
             js_ += body;
         }
-
     }).then(() => {
         //8. create global objects from hierarchy
         js_ += `document.addEventListener("DOMContentLoaded", function() {\n`;
@@ -194,7 +191,19 @@ function compile(file, name, out) {
         fs.writeFile(path_.join(out.path, out.html, `${name}.html`), html_, writeCallback);
         fs.writeFile(path_.join(out.path, out.css, `${name}.css`), css_, writeCallback);
     }).then((e) => console.log(`\nNazca compiled successfully`)
-    ).catch((e) => console.error(`\n${e.message}`));
+    ).catch((e) => {
+        let errorLocation;
+        if (e.line.length || e.column.length) {
+            if (e.line.length) {
+                errorLocation = `${e.line[0]}:${e.column[0] - e.line[1]}:${e.column[1]}`
+            } else {
+                errorLocation = `${e.line}:${e.column[0] - e.line}:${e.column[1]}`
+            }
+        } else {
+            errorLocation = `${e.line}:${e.column}`;
+        }
+        console.error(`\n[${errorLocation}] ${e.message}`);
+    });
 }
 
 function getJSFromHierarchy(object) {
@@ -204,22 +213,22 @@ function getJSFromHierarchy(object) {
 
     let hasParameters = {
         name: !!object.name,
-        methods: !!Object.keys(object.properties.methods.public).length,
-        variables: !!Object.keys(object.properties.variables.public).length,
-        eventHandler: !!Object.keys(object.properties.eventHandlers).length,
-        getters: !!Object.keys(object.properties.getters).length,
-        setters: !!Object.keys(object.properties.setters).length
+        methods: !!Object.keys(object.methods.public).length,
+        variables: !!Object.keys(object.variables.public).length,
+        eventHandler: !!Object.keys(object.eventHandlers).length,
+        getters: !!Object.keys(object.getters).length,
+        setters: !!Object.keys(object.setters).length
     };
 
     if ([Object.keys(hasParameters)].some((value) => value)) {
-        if (Object.keys(object.properties.variables.public).length === 1 &&
-            object.properties.variables.public.text &&
+        if (Object.keys(object.variables.public).length === 1 &&
+            object.variables.public.text &&
             ![hasParameters.methods, hasParameters.eventHandler, hasParameters.getters, hasParameters.setters].some((value) => value)
         ) {
             return;
         }
-        object.properties.parents = object.classes;
-        body = getClassCode(className, object.properties, object.id);
+        object.parents = object.classes;
+        body = getClassCode(className, object, object.id);
         setVariable();
     }
 
@@ -234,7 +243,7 @@ function getJSFromHierarchy(object) {
 
         body += `window.${object.name} = new ${className}()\n`;
         variableIsSet = true;
-        if (object.properties.methods.public.constructor.body) {
+        if (object.methods.public.constructor.body) {
             elements_.push(object.name);
         }
     }
@@ -482,14 +491,12 @@ function getHTMLObject(object, indent = 0) {
             }
         });
     }
-    if (object.properties) {
-        for (let key in object.properties.style) {
-            style.push(`${key}: ${object.properties.style[key]};`);
-        }
+    for (let key in object.style) {
+        style.push(`${key}: ${object.style[key]};`);
+    }
 
-        for (let key in object.properties.attributes) {
-            attributes.push(`${key} = "${object.properties.attributes[key]}"`);
-        }
+    for (let key in object.attributes) {
+        attributes.push(`${key} = "${object.attributes[key]}"`);
     }
 
     let id = tools.nextID();
@@ -509,8 +516,8 @@ function getHTMLObject(object, indent = 0) {
     html += ` id="${id}"`;
     html += '>\n';
 
-    if (object.properties && object.properties.variables && object.properties.variables.public && object.properties.variables.public.text) {
-        html += `${nextSpaces}${object.properties.variables.public.text}\n`;
+    if (object.variables && object.variables.public && object.variables.public.text) {
+        html += `${nextSpaces}${object.variables.public.text}\n`;
     }
 
     if (object.children) {
@@ -528,7 +535,6 @@ function recursivelyInclude(file) {
     prePath.pop();
     prePath = prePath.join('/');
     return read(file).then((fileContent) => {
-        fileContent = tools.addQuotes(fileContent);
         let start = fileContent.indexOfCode('*include');
         let promises = [];
         let replacements = [];
@@ -552,7 +558,7 @@ function recursivelyInclude(file) {
 
         return Promise.all(promises).then((contents) => {
             for (let i = contents.length - 1; i >= 0; i--) {
-                fileContent = fileContent.slice(0, replacements[i].start) + tools.addQuotes(contents[i]) + fileContent.slice(replacements[i].end + 1);
+                fileContent = fileContent.slice(0, replacements[i].start) + contents[i] + fileContent.slice(replacements[i].end + 1);
             }
 
             return fileContent;
