@@ -27,7 +27,7 @@ let elements_ = [];
  * 5. Go through the classes - define css classes with properties
  * 6. Go through the hierarchy - define html, generate ids for each element that can be referenced
  * 7. Go though the classes - generate functions (JS classes)
- * 8. create global objects from hierarchy
+ * 8. Create global objects from hierarchy
  * 9. Write html, css, js file for each page
  */
 
@@ -64,7 +64,7 @@ configLoadPromise.then((config) => {
     }
 
     if (!config.sources) {
-        throw new Error('.nazca structure is invalid. Should include "sources" array');
+        throw {message: '.nazca structure is invalid. Should include "sources" array'};
     }
 
     if (config.sources || !config.sources.length) {
@@ -73,7 +73,7 @@ configLoadPromise.then((config) => {
             compile(file, name, config.out);
         }
     } else {
-        throw new Error('.nazca config file should have sources array')
+        throw {message: '.nazca config file should have sources array'}
     }
 });
 
@@ -193,6 +193,7 @@ function compile(file, name, out) {
     }).then((e) => console.log(`\nNazca compiled successfully`)
     ).catch((e) => {
         let errorLocation;
+        console.log(e);
         if (e.line.length || e.column.length) {
             if (e.line.length) {
                 errorLocation = `${e.line[0]}:${e.column[0] - e.line[1]}:${e.column[1]}`
@@ -206,7 +207,11 @@ function compile(file, name, out) {
     });
 }
 
-function getJSFromHierarchy(object) {
+function getJSFromHierarchy(object, local = false, _classID) {
+    if (!object.name && local) {
+        return;
+    }
+
     let body = '';
     let variableIsSet = false;
     let className = tools.nextID();
@@ -228,7 +233,7 @@ function getJSFromHierarchy(object) {
             return;
         }
         object.parents = object.classes;
-        body = getClassCode(className, object, object.id);
+        body = getClassCode(object.id, object, className);
         setVariable();
     }
 
@@ -241,7 +246,11 @@ function getJSFromHierarchy(object) {
             object.name = tools.nextID();
         }
 
-        body += `window.${object.name} = new ${className}()\n`;
+        if (local) {
+            body += `__nazcaThis.__nazcaProtected.${object.name} = new ${object.id}();\n`;
+        } else {
+            body += `window.${object.name} = new ${object.id}();\n`;
+        }
         variableIsSet = true;
         if (object.methods.public.constructor.body) {
             elements_.push(object.name);
@@ -252,7 +261,9 @@ function getJSFromHierarchy(object) {
         body += getJSFromHierarchy(child) || '';
     });
 
-    return body;
+    if (variableIsSet) {
+        return body;
+    }
 }
 
 function getClassCode(className, clss, elementID = null) {
@@ -267,7 +278,9 @@ function getClassCode(className, clss, elementID = null) {
 
     let classVariables = {
         protected: Object.assign({}, clss.variables.protected, clss.methods.protected),
-        public: Object.assign({}, clss.variables.public, clss.methods.public)
+        public: Object.assign({}, clss.variables.public, clss.methods.public, clss.getters, clss.setters),
+        css: Object.assign({}, clss.style),
+        attributes: Object.assign({}, clss.attributes)
     };
 
     constructorBody = clss.methods.public.constructor.body;
@@ -320,12 +333,10 @@ function getClassCode(className, clss, elementID = null) {
     let privateVariables = {};
     let protectedVariables = {};
     let publicVariables = {};
+
     for (let variable in clss.variables.private) {
         body += `var ${variable} = ${clss.variables.private[variable]};\n`;
-        if (privateVariables[variable] === 1) {
-            throw new Error(`private/protected/public variable and function with the same name (${className}::${variable}) is not allowed`);
-        }
-        privateVariables[variable] = 1;
+        checkDuplicates(className, variable, className);
     }
 
     for (let variable in clss.variables.public) {
@@ -333,33 +344,37 @@ function getClassCode(className, clss, elementID = null) {
             continue;
         }
         let attribute = clss.variables.public[variable];
-        body += `__nazcaThis.${variable} = '${attribute}';\n`;
-        if (privateVariables[variable] === 1 || publicVariables[variable] === 1) {
-            throw new Error(`private/protected/public variable and function with the same name (${className}::${variable}) is not allowed`);
+        if (variable.indexOfCode('-') >= 0) {
+            body += `__nazcaThis['${variable}'] = '${attribute}';\n`;
+        } else {
+            body += `__nazcaThis.${variable} = '${attribute}';\n`;
         }
-        publicVariables[variable] = 1;
+        checkDuplicates(className, variable, className);
     }
 
     body += `__nazcaThis.__nazcaProtected = {};\n`;
 
     for (let variable in clss.variables.protected) {
         body += `__nazcaThis.__nazcaProtected.${variable} = ${clss.variables.protected[variable]};\n`;
-        if (privateVariables[variable] === 1 || protectedVariables[variable] === 1 || publicVariables[variable] === 1) {
-            throw new Error(`private/protected/public variable and function with the same name (${className}::${variable}) is not allowed`);
-        }
-        protectedVariables[variable] = 1;
+        checkDuplicates(className, variable, className);
     }
 
-    //Define public protected, private functions
+    if (clss.classes === undefined) {
+        clss.children.forEach((child) => {
+            let js = getJSFromHierarchy(child, true, className);
+            if (js) {
+                body += js;
+            }
+        });
+    }
+
+    // Define public protected, private functions
     for (let method in clss.methods.private) {
         body += `function ${method} (${clss.methods.private[method].parameters.join(', ')})`;
         let methodBody = replaceVariablesAndFunctions(clss.methods.private[method].body, classVariables);
         body += methodBody;
         body += `\n`;
-        if (privateVariables[method] === 1 || protectedVariables[method] === 1 || publicVariables[method] === 1) {
-            throw new Error(`private/protected/public variable or function with the same name (${className}::${method}) is not allowed`);
-        }
-        privateVariables[method] = 1;
+        checkDuplicates(className, method, className);
     }
 
     for (let method in clss.methods.public) {
@@ -371,10 +386,7 @@ function getClassCode(className, clss, elementID = null) {
         let methodBody = replaceVariablesAndFunctions(clss.methods.public[method].body, classVariables);
         body += methodBody;
         body += `\n`;
-        if (privateVariables[method] === 1 || protectedVariables[method] === 1 || publicVariables[method] === 1) {
-            throw new Error(`private/protected/public variable or function with the same name (${className}::${method}) is not allowed`);
-        }
-        publicVariables[method] = 1;
+        checkDuplicates(className, method, className);
     }
 
     for (let method in clss.methods.protected) {
@@ -382,10 +394,7 @@ function getClassCode(className, clss, elementID = null) {
         let methodBody = replaceVariablesAndFunctions(clss.methods.protected[method].body, classVariables);
         body += methodBody;
         body += `\n`;
-        if (privateVariables[method] === 1 || protectedVariables[method] === 1 || publicVariables[method] === 1) {
-            throw new Error(`private/protected/public variable or function with the same name (${className}::${method}) is not allowed`);
-        }
-        protectedVariables[method] = 1;
+        checkDuplicates(className, method, className);
     }
 
     // Search for variables in constructor and replace them
@@ -475,6 +484,13 @@ function getClassCode(className, clss, elementID = null) {
     body += `}\n`;
 
     return body;
+
+    function checkDuplicates(className, variable) {
+        if (privateVariables[variable] === 1 || protectedVariables[variable] === 1 || publicVariables[variable] === 1) {
+            throw {message: `private/protected/public variable or function with the same name (${className}::${variable}) is not allowed`};
+        }
+        protectedVariables[variable] = 1;
+    }
 }
 
 function getHTMLObject(object, indent = 0) {
@@ -544,7 +560,7 @@ function recursivelyInclude(file) {
 
             let [name, path] = includeString.split(/:/);
             if (!path) {
-                throw new Error('*include directive is invalid');
+                throw {message: '*include directive is invalid'};
             }
 
             path = path.replace(/'/g, '').trim();
@@ -572,18 +588,22 @@ function getFunctionBody(bodyWithBrackets) {
     return bodyWithBrackets.slice(openBracket + 1, closeBracket - 1);
 }
 
-function replaceVariablesAndFunctions(body, {protected, public}) {
+function replaceVariablesAndFunctions(body, {protected, public, css, attributes}) {
     //separate function on lines
     let blockIndex = 0;
     let defined = [];
 
-    let lines = body.slice(1, body.length - 2).splitLines();
-    lines.forEach((line) => {
+    let variables = Object.keys(protected).concat(Object.keys(public)).filter((variable) => variable !== 'constructor').concat(Object.keys(css)).concat(Object.keys(attributes));
+
+    let innerBody = body.slice(1, body.length - 2);
+    tools.buildStrings(innerBody);
+    let lines = innerBody.splitLines();
+    lines = lines.map((line) => {
         if (!line.trim()) {
             return;
         }
         let parts = line.split('{');
-        parts.forEach((part, index) => {
+        parts = parts.map((part, index) => {
             if (!part.trim()) {
                 return;
             }
@@ -591,7 +611,7 @@ function replaceVariablesAndFunctions(body, {protected, public}) {
                 blockIndex++;
             }
             let subParts = part.split('}');
-            subParts.forEach((part, subindex) => {
+            subParts = subParts.map((part, subindex) => {
                 if (!part.trim()) {
                     return;
                 }
@@ -622,23 +642,38 @@ function replaceVariablesAndFunctions(body, {protected, public}) {
                     }
                 }
 
-                let variables = Object.keys(protected).concat(Object.keys(public)).filter((variable) => variable !== 'constructor');
                 variables.forEach((variable) => {
                     if (!(defined[blockIndex] && defined[blockIndex][variable]) && part.indexOfCode(variable) >= 0) {
-                        if (protected[variable]) {
-                            part.replace(new RegExp(variable, 'g'), `__nazcaThis.__nazcaProtected.${variable}`);
-                        } else {
-                            part.replace(new RegExp(variable, 'g'), `__nazcaThis.${variable}`);
-                        }
+                        part = replaceVariable(part, variable, protected[variable]);
                     }
                 });
+
+                return part;
             });
 
-            part = subParts.join('}');
+            return subParts.join('}');
         });
 
-        line = parts.join('{');
+        return parts.join('{');
     });
 
     return `{\n${lines.join('\n')}}\n`;
+}
+
+function replaceVariable(content, variableName, isProtected = false) {
+    tools.buildStrings(content);
+    [variableName, `['${variableName}']`, `[\`${variableName}\`]`, `["${variableName}"]`].forEach((variable) => {
+        let index = content.indexOfCode(variable);
+        let point = variable.indexOf('[') === 0 ? '' : '.';
+        let replacement = isProtected ? `__nazcaThis.__nazcaProtected${point}${variableName}` : `__nazcaThis${point}${variable}`;
+        while (index >= 0) {
+            if (content.charAt(index - 1) !== '.') {
+                content = `${content.slice(0, index)}${replacement}${content.slice(index + variable.length)}`;
+            }
+            index += replacement.length;
+            index = content.indexOfCode(variable, index);
+        }
+    });
+
+    return content;
 }

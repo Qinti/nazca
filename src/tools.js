@@ -36,7 +36,6 @@ function buildStrings(str) {
                 }
 
                 stringClosing = i;
-                console.log(`${stringOpening} - ${stringClosing} ${str.slice(stringOpening, stringClosing)}`);
                 i = addString() + 1;
                 closeSymbol = null;
                 isBlockComment = false;
@@ -169,8 +168,6 @@ String.prototype.indexOfCode = function (pattern, startIndex = 0) {
 };
 
 String.prototype.splitLines = function () {
-    let insideString = false;
-    let stringEndSymbol;
     let previousIndex = 0;
     let lines = [];
     let index;
@@ -227,6 +224,10 @@ function nextID() {
         counter = Math.floor(counter / n);
     }
 
+    if (id === 'a') {
+        id = 'b';
+        idCounter++;
+    }
     return id.split("").reverse().join("");
 }
 
