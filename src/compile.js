@@ -89,7 +89,7 @@ function read(file) {
 }
 
 function compile(file, name, out) {
-    let classes_ = {};
+    classes_ = {};
     let content_;
 
     // 1. Find all includes and merge the file into one
@@ -239,7 +239,7 @@ function getJSFromHierarchy(object, local = false) {
         setters: !!Object.keys(object.setters).length
     };
 
-    if ([Object.keys(hasParameters)].some((value) => value)) {
+    if (Object.values(hasParameters).some((value) => value)) {
         if (Object.keys(object.variables.public).length === 1 &&
             object.variables.public.text &&
             ![hasParameters.methods, hasParameters.eventHandler, hasParameters.getters, hasParameters.setters].some((value) => value)
@@ -247,7 +247,7 @@ function getJSFromHierarchy(object, local = false) {
             return;
         }
         object.parents = object.classes;
-        body = getClassCode(object.id, object, className);
+        body = getClassCode(className, object, object.id);
         setVariable();
     }
 
@@ -470,7 +470,7 @@ function getClassCode(className, clss, elementID = null) {
 
     // Define event listeners
     for (let event in clss.eventHandlers) {
-        body += `__nazcaThis.__nazcaElement.addEventListener('${event}',function (${clss.eventHandlers[event].parameters.join(', ')}) ${clss.eventHandlers[event].body})`;
+        body += `__nazcaThis.__nazcaElement.addEventListener('${event}',function (${clss.eventHandlers[event].parameters.join(', ')}) ${clss.eventHandlers[event].body});\n`;
     }
 
     if (isElementDefined) {
@@ -519,8 +519,17 @@ function getHTMLObject(object, indent = 0) {
             } else {
                 classes.push(clss);
             }
+
+            if (classes_[clss]) {
+                classes_[clss].parents.forEach((clss) => {
+                    if (htmlTags[clss]) {
+                        element = clss;
+                    }
+                });
+            }
         });
     }
+
     for (let key in object.style) {
         style.push(`${key}: ${object.style[key]};`);
     }
