@@ -120,9 +120,23 @@ function compile(file, name, out) {
         for (let className in classes_) {
             if (Object.keys(classes_[className].style).length) {
                 css_ += `.${className} {\n`;
+
+                let parents = [];
+                classes_[className].parents.forEach((parent) => {
+                    parents.unshift(parent);
+                });
+                parents.forEach((parent) => {
+                    if (classes_[parent] && Object.keys(classes_[parent].style).length) {
+                        for (let property in classes_[parent].style) {
+                            css_ += `    ${property}: ${classes_[parent].style[property]};\n`
+                        }
+                    }
+                });
+
                 for (let property in classes_[className].style) {
                     css_ += `    ${property}: ${classes_[className].style[property]};\n`
                 }
+
 
                 css_ += `}\n\n`;
             }
@@ -207,7 +221,7 @@ function compile(file, name, out) {
     });
 }
 
-function getJSFromHierarchy(object, local = false, _classID) {
+function getJSFromHierarchy(object, local = false) {
     if (!object.name && local) {
         return;
     }
@@ -525,8 +539,7 @@ function getHTMLObject(object, indent = 0) {
     let nextSpaces = `    ${spaces}`;
 
     let html = `${spaces} <${element}`;
-    html += `${classes.length ? ` class="${classes.join(' ')}
-    "` : ''}`;
+    html += `${classes.length ? ` class="${classes.join(' ')}"` : ''}`;
     html += `${style.length ? ` style="${style.join('')}"` : ''}`;
     html += `${attributes.length ? ` ${attributes.join(' ')}` : ''}`;
     html += ` id="${id}"`;
