@@ -521,13 +521,25 @@ function getHTMLObject(object, indent = 0) {
             }
 
             if (classes_[clss]) {
-                classes_[clss].parents.forEach((clss) => {
-                    if (htmlTags[clss]) {
-                        element = clss;
-                    }
-                });
+                let parentElement = getParentElement(classes_[clss]);
+                if (parentElement) {
+                    element = parentElement;
+                }
             }
         });
+    }
+
+    function getParentElement(parent) {
+        let returnValue;
+        parent.parents.forEach((clss) => {
+            if (htmlTags[clss]) {
+                returnValue = clss;
+            } else if (classes_[clss]) {
+                returnValue = getParentElement(classes_[clss]);
+            }
+        });
+
+        return returnValue;
     }
 
     for (let key in object.style) {
