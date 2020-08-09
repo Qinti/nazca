@@ -221,14 +221,14 @@ function compile(file, name, out) {
     });
 }
 
-function getJSFromHierarchy(object, local = false) {
+function getJSFromHierarchy(object, local = false, className) {
     if (!object.name && local) {
         return;
     }
 
     let body = '';
     let variableIsSet = false;
-    let className = tools.nextID();
+    className = className || tools.nextID();
 
     let hasParameters = {
         name: !!object.name,
@@ -261,9 +261,9 @@ function getJSFromHierarchy(object, local = false) {
         }
 
         if (local) {
-            body += `__nazcaThis.__nazcaProtected.${object.name} = new ${object.id}();\n`;
+            body += `__nazcaThis.__nazcaProtected.${object.name} = new ${className}();\n`;
         } else {
-            body += `window.${object.name} = new ${object.id}();\n`;
+            body += `window.${object.name} = new ${className}();\n`;
         }
         variableIsSet = true;
         if (object.methods.public.constructor.body) {
