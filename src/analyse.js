@@ -9,8 +9,6 @@ const prePath = `./${pathSplit.join('/')}`;
 
 analyseFile(`./${file}`);
 
-let inString = [];
-
 function analyseFile(file) {
     /**
      * Algorithm:
@@ -145,7 +143,6 @@ function analyse(_content) {
             hierarchy = hierarchy.concat(e.children);
             index = e.index;
         }
-
     }
 
     // 7. Define global parameters
@@ -166,7 +163,7 @@ function getChildNames(content, global, children, errors = []) {
                     message: `Duplicate global name is found`,
                     line,
                     column: [column, columnEnd],
-                    index: children[i].start,
+                    index: children[i].start
                 });
             } else {
                 global[name] = children[i];

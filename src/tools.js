@@ -7,6 +7,7 @@ const reVariable = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}.{0,};/i;
 const reMethod = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}\([a-z_\d,\s]{0,}\)\s{0,}{/i;
 const reChild = /^{?[\s\n]{0,}[.a-z][a-z\d.]+\s{0,}{/i;
 
+/* eslint-disable no-extend-native */
 String.prototype.regexIndexOf = function (regex, startIndex = 0) {
     let indexOf = this.substring(startIndex).search(regex);
     return (indexOf >= 0) ? (indexOf + startIndex) : indexOf;
@@ -14,12 +15,10 @@ String.prototype.regexIndexOf = function (regex, startIndex = 0) {
 
 global.stringMap = global.stringMap || {};
 
-//TODO: build full global.stringMap here. It should check all comments, quotes and :; as well. IndexOfCode will just check inString()
 function buildStrings(str) {
-    let index = 0;
     let stringArray = [];
 
-    const quoteRegex = /['"\/`:]/;
+    const quoteRegex = /['"/`:]/;
     let closeSymbol, stringOpening, stringClosing;
     let isBlockComment = false;
     const closeSymbolMap = {':': ';'};
@@ -78,7 +77,7 @@ function buildStrings(str) {
                 stringClosing--;
             }
 
-            //for methods
+            // for methods
             if (str.charAt(stringOpening) === '(') {
                 let methodStart = str.indexOf('{', stringOpening);
                 let methodEnd = findClosingBracket(str, methodStart) + 1;
@@ -124,7 +123,7 @@ function buildStrings(str) {
 }
 
 function outInStrings(str) {
-    let start, end;
+    let start;
     let out = '';
     let styles = [];
 
@@ -134,7 +133,6 @@ function outInStrings(str) {
             out += '%c';
             styles.push('color:green');
         } else if (global.stringMap[str][i] !== 1 && start) {
-            end = i - 1;
             start = null;
             out += '%c';
             styles.push('color:white');
@@ -158,6 +156,7 @@ function setStrings(str, stringArray) {
     global.stringMap[str] = stringArray;
 }
 
+/* eslint-disable no-extend-native */
 String.prototype.indexOfCode = function (pattern, startIndex = 0) {
     let index = this.indexOf(pattern, startIndex);
     while (index >= 0 && inString(this, index)) {
@@ -167,6 +166,7 @@ String.prototype.indexOfCode = function (pattern, startIndex = 0) {
     return index;
 };
 
+/* eslint-disable no-extend-native */
 String.prototype.splitLines = function () {
     let previousIndex = 0;
     let lines = [];
@@ -253,6 +253,7 @@ function getClassMap(content, startIndex) {
         let openBracket = content.indexOfCode('{', start);
         if (openBracket < 0) {
             let [line, column] = calculateLineColumn(content, start);
+            /* eslint-disable no-throw-literal */
             throw {
                 message: 'Missing { for class definition',
                 line,
@@ -265,6 +266,7 @@ function getClassMap(content, startIndex) {
         if (!/^class ([a-z_$][a-z\d_$]+)(?:\s*<\s*[a-z_$][a-z_\d$]*)*\s*{/i.test(content.slice(start, openBracket + 1))) {
             let [line1, column1] = calculateLineColumn(content, start);
             let [line2, column2] = calculateLineColumn(content, openBracket);
+            /* eslint-disable no-throw-literal */
             throw {
                 message: 'Class declaration is invalid',
                 line: line1 === line2 ? line1 : [line1, line2],
@@ -277,6 +279,7 @@ function getClassMap(content, startIndex) {
         let closingBracket = findClosingBracket(content, openBracket);
         if (closingBracket < 0) {
             let [line, column] = calculateLineColumn(content, start);
+            /* eslint-disable no-throw-literal */
             throw {
                 message: 'Missing } for class definition',
                 line,
@@ -374,6 +377,7 @@ function getClassMap(content, startIndex) {
                 }
                 let [line2, column2] = calculateLineColumn(content, nextColon);
 
+                /* eslint-disable no-throw-literal */
                 throw {
                     message: 'The property is invalid',
                     line: line1 === line2 ? line1 : [line1, line2],
@@ -404,12 +408,14 @@ function parseProperty(content, index) {
     }
     if (!/[a-z\d-]/i.test(nameTest)) {
         let [line, column1] = calculateLineColumn(content, index + 1);
+        /* eslint-disable no-unused-vars */
         let [line2, column2] = calculateLineColumn(content, nameEnd);
+        /* eslint-disable no-throw-literal */
         throw {
             message: `Invalid property name '${name}'`,
             line,
             column: [column1, column2],
-            index: nameEnd,
+            index: nameEnd
         };
     }
 
@@ -533,7 +539,7 @@ function getNextChild(content, index = 0) {
     nextOpeningBracket = Math.min(nextOpeningBracket, nextSemiColon);
     let nextColon = content.indexOfCode(':', nextChildEnd);
 
-    while (nextOpeningBracket >= 0 && nextOpeningBracket < closingBracket || nextColon >= 0 && nextColon < closingBracket) {
+    while ((nextOpeningBracket >= 0 && nextOpeningBracket < closingBracket) || (nextColon >= 0 && nextColon < closingBracket)) {
         if (nextColon < nextOpeningBracket || nextOpeningBracket < 0) {
             let property = parseProperty(content, nextChildEnd + 2);
             const typeMap = {
@@ -593,6 +599,7 @@ function getChildren(content, index = 0) {
                 index = content.indexOf(';', closingBracket) + 1;
                 let [line1, column1] = calculateLineColumn(content, previousIndex);
                 let [line2, column2] = calculateLineColumn(content, index);
+                /* eslint-disable no-throw-literal */
                 throw {
                     message: `Class should have an opening bracket`,
                     line: line1 === line2 ? line1 : [line1, line2],
@@ -619,6 +626,7 @@ function getChildren(content, index = 0) {
             let nextSemiColon = content.indexOf(';', index);
             let [line1, column1] = calculateLineColumn(content, index);
             let [line2, column2] = calculateLineColumn(content, nextSemiColon);
+            /* eslint-disable no-throw-literal */
             throw {
                 message: `The statement is not recognized. Should be *include, class or hierarchy`,
                 line: line1 === line2 ? line1 : [line1, line2],
@@ -636,7 +644,7 @@ function getChildren(content, index = 0) {
 
 function findChildIndex(content, index) {
     let closeSymbol;
-    const quoteRegex = /['"\/`]/;
+    const quoteRegex = /['"/`]/;
     if (index < 0) {
         return -1;
     }
@@ -650,10 +658,9 @@ function findChildIndex(content, index) {
         } else {
             if (/[.a-z_\-\d]/i.test(content.charAt(i))) {
                 return i;
-            } else if (0) {
-
             } else if (!/[\t\s\n]/i.test(content.charAt(i))) {
                 let [line, column] = calculateLineColumn(content, i);
+                /* eslint-disable no-throw-literal */
                 throw {message: `Unexpected symbol '${content.charAt(i)}'`, line, column};
             }
         }
