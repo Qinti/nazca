@@ -273,9 +273,7 @@ function getJSFromHierarchy(object, local = false, className) {
         body += getJSFromHierarchy(child) || '';
     });
 
-    if (variableIsSet) {
-        return body;
-    }
+    return body;
 }
 
 function getClassCode(className, clss, elementID = null) {
@@ -623,14 +621,16 @@ function getFunctionBody(bodyWithBrackets) {
     return bodyWithBrackets.slice(openBracket + 1, closeBracket - 1);
 }
 
-function replaceVariablesAndFunctions(body, {_protected, _public, css, attributes}) {
+function replaceVariablesAndFunctions(body, classVariables) {
     // separate function on lines
     let blockIndex = 0;
     let defined = [];
-    _protected = _protected || {};
-    _public = _public || {};
 
-    let variables = Object.keys(_protected).concat(Object.keys(_public)).filter((variable) => variable !== 'constructor').concat(Object.keys(css)).concat(Object.keys(attributes));
+    let variables = Object.keys(classVariables.protected)
+        .concat(Object.keys(classVariables.public)).filter((variable) => variable !== 'constructor')
+        .concat(Object.keys(classVariables.css))
+        .concat(Object.keys(classVariables.attributes))
+        .concat(['text']);
 
     let innerBody = body.slice(1, body.length - 2);
     tools.buildStrings(innerBody);
@@ -680,8 +680,8 @@ function replaceVariablesAndFunctions(body, {_protected, _public, css, attribute
                 }
 
                 variables.forEach((variable) => {
-                    if (!(defined[blockIndex] && defined[blockIndex][variable]) && part.indexOfCode(variable) >= 0) {
-                        part = replaceVariable(part, variable, _protected[variable]);
+                    if (!(defined[blockIndex] && defined[blockIndex][variable]) && part.indexOf(variable) >= 0) {
+                        part = replaceVariable(part, variable, !!classVariables.protected[variable]);
                     }
                 });
 
