@@ -123,10 +123,7 @@ function compile(file, name, out) {
             if (Object.keys(classes_[className].style).length) {
                 css_ += `.${className} {\n`;
 
-                let parents = [];
-                classes_[className].parents.forEach((parent) => {
-                    parents.unshift(parent);
-                });
+                let parents = classes_[className].parents.reverse();
                 parents.forEach((parent) => {
                     if (classes_[parent] && Object.keys(classes_[parent].style).length) {
                         for (let property in classes_[parent].style) {
