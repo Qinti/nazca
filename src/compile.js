@@ -47,8 +47,26 @@ let configLoadPromise = new Promise((resolve, reject) => {
             }
 
             let config;
+            let index = 0;
+            content = content.toString();
+            [
+                {openSymbol: '/*', closeSymbol: '*/'},
+                {openSymbol: '//', closeSymbol: '\n', replacement: '\n'}
+            ].forEach(({openSymbol, closeSymbol, replacement}) => {
+                index = 0;
+                while (index >= 0) {
+                    index = content.indexOf(openSymbol);
+
+                    if (index >= 0) {
+                        let close = content.indexOf(closeSymbol, index + openSymbol.length);
+                        content = `${content.slice(0, index)}${replacement || ''}${content.slice(close + closeSymbol.length)}`;
+                    }
+                }
+            });
+
+
             try {
-                config = JSON.parse(content);
+                config = JSON.parse(content.toString().replace(/\/\/.*\n|\/\*(.|\n)*\*\//g, ''));
             } catch (e) {
                 return reject(e);
             }
