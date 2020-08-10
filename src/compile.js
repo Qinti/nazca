@@ -13,7 +13,7 @@ let js_ = '';
 let elements_ = [];
 
 /**
- * Nazca compiler v. 1.0.0
+ * Nazca compiler. Compiles *.nazca files, described by .nazca in the root directory to the JS/HTML/CSS
  *
  * @author Q'inti qinti.nazca@gmail.com
  *

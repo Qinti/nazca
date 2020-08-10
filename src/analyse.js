@@ -1,13 +1,17 @@
+/**
+ * Analyzer script. Checks if the *.nazca file contains correct code
+ * @author Q'inti qinti.nazca@gmail.com
+ */
+
 const file = process.argv[2];
 const fs = require('fs');
 const tools = require('./tools');
 const jsHint = require('jshint').JSHINT;
+let prePath = '';
 
-let pathSplit = file.split('/');
-pathSplit.pop();
-const prePath = `./${pathSplit.join('/')}`;
-
-analyseFile(`./${file}`);
+if (file) {
+    analyseFile(`./${file}`);
+}
 
 function analyseFile(file) {
     /**
@@ -20,6 +24,10 @@ function analyseFile(file) {
      * 6. Build hierarchy, if any
      * 7. Define global parameters
      */
+
+    let pathSplit = file.split('/');
+    pathSplit.pop();
+    prePath = `${pathSplit.join('/')}`;
 
     // 1. Read the file
     fs.readFile(file, (error, content) => {
@@ -41,7 +49,6 @@ function analyse(_content) {
     let content = _content;
 
     content = tools.buildStrings(content);
-    tools.outInStrings(content);
     let index = 0;
     index = content.indexOfCode("*include:", index);
 
@@ -177,5 +184,6 @@ function getChildNames(content, global, children, errors = []) {
 }
 
 module.exports = {
-    analyse
+    analyse,
+    analyseFile
 };

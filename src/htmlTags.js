@@ -1,3 +1,8 @@
+/**
+ * List of HTML tags
+ * @author Q'inti qinti.nazca@gmail.com
+ */
+
 const tags = [
     'html',
     'base',

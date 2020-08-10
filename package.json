@@ -1,6 +1,6 @@
 {
   "name": "nazca",
-  "version": "1.0.0",
+  "version": "0.9.0",
   "description": "A great new way of creating GUI in the web",
   "main": "compile.js",
   "dependencies": {
@@ -13,5 +13,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Q'inti",
-  "license": "MIT"
+  "license": "MIT",
+  "bin": {
+    "nazca": "bin.js"
+  }
 }

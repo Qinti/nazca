@@ -1,3 +1,8 @@
+/**
+ * List of CSS properties
+ * @author Q'inti qinti.nazca@gmail.com
+ */
+
 const properties = [
     'animation',
     'animation-delay',

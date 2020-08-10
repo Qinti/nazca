@@ -1,3 +1,8 @@
+/**
+ * Tools contains usefule functions, used by both - analyse.js and compile.js
+ * @author Q'inti qinti.nazca@gmail.com
+ */
+
 let idCounter = 0;
 const alphabet = '_abcdefghijklmnopqrstuvwxyz';
 const cssProperties = require('./cssProperties');
@@ -120,28 +125,6 @@ function buildStrings(str) {
     setStrings(str, stringArray);
 
     return str;
-}
-
-function outInStrings(str) {
-    let start;
-    let out = '';
-    let styles = [];
-
-    for (let i = 0; i < str.length; i++) {
-        if (global.stringMap[str][i] === 1 && !start) {
-            start = i;
-            out += '%c';
-            styles.push('color:green');
-        } else if (global.stringMap[str][i] !== 1 && start) {
-            start = null;
-            out += '%c';
-            styles.push('color:white');
-        }
-
-        out += str.charAt(i);
-    }
-
-    console.log(out, ...styles);
 }
 
 function inString(str, index) {
@@ -676,6 +659,5 @@ module.exports = {
     getClassMap,
     calculateLineColumn,
     getChildren,
-    outInStrings,
     inString
 };
