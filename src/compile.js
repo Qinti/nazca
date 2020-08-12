@@ -64,7 +64,6 @@ let configLoadPromise = new Promise((resolve, reject) => {
                 }
             });
 
-
             try {
                 config = JSON.parse(content.toString().replace(/\/\/.*\n|\/\*(.|\n)*\*\//g, ''));
             } catch (e) {
@@ -76,7 +75,7 @@ let configLoadPromise = new Promise((resolve, reject) => {
     });
 });
 
-configLoadPromise.then((config) => {
+configLoadPromise.then(async (config) => {
     if (!config.out) {
         config.out = 'www';
     }
@@ -89,7 +88,7 @@ configLoadPromise.then((config) => {
     if (config.sources || !config.sources.length) {
         for (let name in config.sources) {
             let file = config.sources[name];
-            compile(file, name, config.out);
+            await compile(file, name, config.out);
         }
     } else {
         /* eslint-disable no-throw-literal */
@@ -112,8 +111,17 @@ function compile(file, name, out) {
     classes_ = {};
     let content_;
 
+    classes_ = {};
+    hierarchy_ = {children: []};
+    css_ = '';
+    html_ = '';
+    js_ = '';
+    elements_ = [];
+
+    tools.resetID();
+
     // 1. Find all includes and merge the file into one
-    recursivelyInclude(file).then((content) => {
+    return recursivelyInclude(file).then((content) => {
         content = content.replace(/''/g, "'");
         content_ = content;
         // 2. Create a map of classes
@@ -220,7 +228,7 @@ function compile(file, name, out) {
         fs.writeFile(path_.join(out.path, out.js, `${name}.js`), js_, writeCallback);
         fs.writeFile(path_.join(out.path, out.html, `${name}.html`), html_, writeCallback);
         fs.writeFile(path_.join(out.path, out.css, `${name}.css`), css_, writeCallback);
-    }).then((e) => console.log(`\nNazca compiled successfully`)
+    }).then((e) => console.log(`\n${file} compiled successfully`)
     ).catch((e) => {
         let errorLocation;
         console.log(e);
@@ -581,6 +589,19 @@ function getHTMLObject(object, indent = 0) {
     html += `${attributes.length ? ` ${attributes.join(' ')}` : ''}`;
     html += ` id="${id}"`;
     html += '>\n';
+
+    if (object.variables.public.text) {
+        html += `    ${spaces}${object.variables.public.text}\n`;
+    } else {
+        let classes = object.classes.slice().reverse();
+        let isSet = false;
+        classes.forEach((clss) => {
+            if (!isSet && classes_[clss] && classes_[clss].variables.public.text) {
+                html += `    ${spaces}${classes_[clss].variables.public.text}\n`;
+                isSet = true;
+            }
+        });
+    }
 
     if (object.variables && object.variables.public && object.variables.public.text) {
         html += `${nextSpaces}${object.variables.public.text}\n`;

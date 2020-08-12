@@ -3,7 +3,7 @@
  * @author Q'inti qinti.nazca@gmail.com
  */
 
-let idCounter = 0;
+let idCounter = 1;
 const alphabet = '_abcdefghijklmnopqrstuvwxyz';
 const cssProperties = require('./cssProperties');
 
@@ -192,6 +192,10 @@ function findClosingBracket(content, openBracket) {
     }
 }
 
+function resetID() {
+    idCounter = 1;
+}
+
 function nextID() {
     idCounter++;
     let id = '';
@@ -207,10 +211,6 @@ function nextID() {
         counter = Math.floor(counter / n);
     }
 
-    if (id === 'a') {
-        id = 'b';
-        idCounter++;
-    }
     return id.split("").reverse().join("");
 }
 
@@ -493,6 +493,14 @@ function getNextChild(content, index = 0) {
     let openingBracket = content.indexOfCode('{', elementIndex);
     let semiColon = content.indexOfCode(';', elementIndex);
     let closingBracket = findClosingBracket(content, openingBracket);
+
+    if (openingBracket < 0) {
+        openingBracket = 999;
+    }
+    if (semiColon < 0) {
+        semiColon = 999;
+    }
+
     let declaration = content.slice(index, Math.min(openingBracket, semiColon)).trim();
 
     let children = [];
@@ -522,8 +530,11 @@ function getNextChild(content, index = 0) {
     nextOpeningBracket = Math.min(nextOpeningBracket, nextSemiColon);
     let nextColon = content.indexOfCode(':', nextChildEnd);
 
-    while ((nextOpeningBracket >= 0 && nextOpeningBracket < closingBracket) || (nextColon >= 0 && nextColon < closingBracket)) {
-        if (nextColon < nextOpeningBracket || nextOpeningBracket < 0) {
+    while (
+        (nextOpeningBracket >= 0 && nextOpeningBracket < closingBracket) ||
+        (nextColon >= 0 && nextColon < closingBracket) ||
+        (nextSemiColon >= 0 && nextSemiColon < closingBracket)) {
+        if (nextColon >= 0 && (nextColon < nextOpeningBracket || nextOpeningBracket < 0)) {
             let property = parseProperty(content, nextChildEnd + 2);
             const typeMap = {
                 variable: 'variables',
@@ -659,5 +670,5 @@ module.exports = {
     getClassMap,
     calculateLineColumn,
     getChildren,
-    inString
+    resetID
 };

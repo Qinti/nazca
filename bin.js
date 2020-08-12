@@ -83,7 +83,7 @@ function init() {
         It will generate fileName.html, fileName.css and fileName.js files.
     */
     "sources": {
-        "index": "index.nazca"
+        "index": "nazca/index.nazca"
     },
     /*
         "out" shows the folders, where the css/html/js should be generated

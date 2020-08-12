@@ -1,0 +1,12 @@
+.html {
+    .head {
+        .title {
+            text: A simple Hello World example;
+        };
+    };
+    .body {
+        .div {
+            text: Hello world;
+        };
+    };
+};
