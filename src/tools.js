@@ -9,7 +9,7 @@ const cssProperties = require('./cssProperties');
 
 const reObject = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}{/i;
 const reVariable = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}.{0,};/i;
-const reMethod = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}\([a-z_\d,\s]{0,}\)\s{0,}{/i;
+const reMethod = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}\([a-z_\d,\s=]{0,}\)\s{0,}{/i;
 const reChild = /^{?[\s\n]{0,}[.a-z][a-z\d.]+\s{0,}{/i;
 
 /* eslint-disable no-extend-native */
@@ -576,6 +576,8 @@ function getNextChild(content, index = 0) {
 
 function getChildren(content, index = 0) {
     const reInclude = /^\*include/;
+    const reJSON = /^\*json/;
+    const reFontFace = /^\*font-face/;
     const reClass = /^class /;
     const reComment = /^\/\//;
     const reBlockComment = /^\/\*/;
@@ -583,8 +585,12 @@ function getChildren(content, index = 0) {
 
     let nextWord = content.slice(index).trim();
     while (index >= 0 && nextWord) {
-        if (reInclude.test(nextWord)) {
+        if (reInclude.test(nextWord) || reJSON.test(nextWord)) {
             index = content.indexOfCode(';', index) + 1;
+        } else if (reFontFace.test(nextWord)) {
+            let openingBracket = content.indexOfCode('{', index);
+            let closingBracket = content.findClosingBracket(content, openingBracket);
+            index = content.indexOfCode(';', closingBracket) + 1;
         } else if (reClass.test(nextWord)) {
             let openingBracket = content.indexOfCode('{', index);
             let closingBracket = content.indexOfCode('}', index);
@@ -622,7 +628,7 @@ function getChildren(content, index = 0) {
             let [line2, column2] = calculateLineColumn(content, nextSemiColon);
             /* eslint-disable no-throw-literal */
             throw {
-                message: `The statement is not recognized. Should be *include, class or hierarchy`,
+                message: `The statement is not recognized. Should be *include, *json, *font-face, class or hierarchy`,
                 line: line1 === line2 ? line1 : [line1, line2],
                 column: [column1, column2],
                 index: nextSemiColon + 1,
@@ -663,6 +669,40 @@ function findChildIndex(content, index) {
     return -1;
 }
 
+function getListOfJSONFiles(content) {
+    let jsonIndex = 0;
+    jsonIndex = content.indexOfCode('*json', jsonIndex);
+    let jsonFiles = [];
+    while (jsonIndex >= 0) {
+        let valueStart = content.indexOfCode(':', jsonIndex);
+        let valueEnd = content.indexOfCode(';', jsonIndex);
+        let jsonValue = content.slice(valueStart + 1, valueEnd).trim();
+        let name = jsonValue.split('=');
+        let value = name[1];
+        name = name[0];
+
+        if (!name || !value) {
+            let [line1, column1] = calculateLineColumn(content, jsonValue);
+            let [line2, column2] = calculateLineColumn(content, valueEnd);
+
+            throw {
+                message: `*json directive is invalid. Sho8uld be in format of '*json: objectName=path/to/file.json;'`,
+                line: line1 === line2 ? line1 : [line1, line2],
+                column: [column1, column2]
+            }
+        }
+
+        jsonFiles.push({name, value});
+        jsonIndex = content.indexOfCode('*json', jsonIndex);
+    }
+
+    return jsonFiles;
+}
+
+function makeVariable(str){
+    return `__nazcaVar_${str.replace(/[^a-z\d_$]/ig,'_')}`;
+}
+
 module.exports = {
     buildStrings,
     findClosingBracket,
@@ -670,5 +710,7 @@ module.exports = {
     getClassMap,
     calculateLineColumn,
     getChildren,
-    resetID
+    resetID,
+    getListOfJSONFiles,
+    makeVariable
 };

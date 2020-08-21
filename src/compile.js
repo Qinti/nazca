@@ -26,9 +26,10 @@ let elements_ = [];
  * 4. Starting generating the html/css/js
  * 5. Go through the classes - define css classes with properties
  * 6. Go through the hierarchy - define html, generate ids for each element that can be referenced
- * 7. Go though the classes - generate functions (JS classes)
- * 8. Create global objects from hierarchy
- * 9. Write html, css, js file for each page
+ * 7. Search for *json, add <script> to the hierarchy
+ * 8. Go though the classes - generate functions (JS classes)
+ * 9. Create global objects from hierarchy
+ * 10. Write html, css, js file for each page
  */
 
 let configLoadPromise = new Promise((resolve, reject) => {
@@ -87,7 +88,7 @@ configLoadPromise.then(async (config) => {
 
     if (config.sources || !config.sources.length) {
         for (let name in config.sources) {
-            let file = config.sources[name];
+            let file = `./${config.sources[name]}`;
             await compile(file, name, config.out);
         }
     } else {
@@ -100,7 +101,7 @@ function read(file) {
     return new Promise((resolve, reject) => {
         fs.readFile(file, (err, content) => {
             if (err) {
-                reject(err);
+                return reject(err);
             }
             resolve(content.toString());
         });
@@ -186,11 +187,23 @@ function compile(file, name, out) {
             root.appendChild(head);
         }
 
-        head.appendChild(`<script src="${out.js}/${name}.js"></script>`);
+        head.appendChild(`<script src="${out.js}/${name}.js" type="application/javascript"></script>`);
         head.appendChild(`<link rel="stylesheet" type="text/css" href="${out.css}/${name}.css">`);
+
+        // 7. Search for *json, add <script> to the hierarchy
+        let jsonFiles = tools.getListOfJSONFiles(content_);
+        jsonFiles.forEach(({name, value}) => {
+            let id = tools.nextID();
+            head.appendChild(`<script src="${value}" type="application/json" id="${id}"></script>`);
+            head.appendChild(`
+                <script type="application/javascript">
+                    window['${name}']=JSON.parse(document.getElementById('${id}').value);
+                </script>`);
+        });
+
         html_ = root.innerHTML;
     }).then(() => {
-        // 7. Go though the classes - generate functions (JS classes)
+        // 8. Go though the classes - generate functions (JS classes)
 
         for (let className in classes_) {
             let clss = classes_[className];
@@ -198,7 +211,7 @@ function compile(file, name, out) {
             js_ += body;
         }
     }).then(() => {
-        // 8. create global objects from hierarchy
+        // 9. create global objects from hierarchy
         js_ += `document.addEventListener("DOMContentLoaded", function() {\n`;
         hierarchy_.children.forEach((child) => {
             js_ += getJSFromHierarchy(child) || '';
@@ -209,7 +222,7 @@ function compile(file, name, out) {
         });
         js_ += `});\n`;
     }).then(() => {
-        // 9. Write html, css, js file for each page
+        // 10. Write html, css, js file for each page
         function writeCallback(err) {
             if (err) {
                 console.error(err);
@@ -232,12 +245,10 @@ function compile(file, name, out) {
     ).catch((e) => {
         let errorLocation;
         console.log(e);
-        if (e.line.length || e.column.length) {
-            if (e.line.length) {
-                errorLocation = `${e.line[0]}:${e.column[0] - e.line[1]}:${e.column[1]}`
-            } else {
-                errorLocation = `${e.line}:${e.column[0] - e.line}:${e.column[1]}`
-            }
+        if (e.line.length && e.column.length) {
+            errorLocation = `${e.line[0]}:${e.column[0]} - ${e.line[1]}:${e.column[1]}`;
+        } else if (e.column.length) {
+            errorLocation = `${e.line}:${e.column[0]} - ${e.line}:${e.column[1]}`;
         } else {
             errorLocation = `${e.line}:${e.column}`;
         }
@@ -245,33 +256,51 @@ function compile(file, name, out) {
     });
 }
 
-function getJSFromHierarchy(object, local = false, className) {
-    if (!object.name && local) {
-        return;
-    }
-
+function getJSFromHierarchy(object, local = false, className, parentVariables) {
     let body = '';
     let variableIsSet = false;
     className = className || tools.nextID();
 
-    let hasParameters = {
-        name: !!object.name,
-        methods: !!Object.keys(object.methods.public).length,
-        variables: !!Object.keys(object.variables.public).length,
-        eventHandler: !!Object.keys(object.eventHandlers).length,
-        getters: !!Object.keys(object.getters).length,
-        setters: !!Object.keys(object.setters).length
-    };
-
-    if (Object.values(hasParameters).some((value) => value)) {
-        if (Object.keys(object.variables.public).length === 1 &&
-            object.variables.public.text &&
-            ![hasParameters.methods, hasParameters.eventHandler, hasParameters.getters, hasParameters.setters].some((value) => value)
-        ) {
-            return;
+    function shouldGenerate(object) {
+        // has name
+        if (object.name) {
+            return true;
         }
+        // has methods apart from constructor
+        if (Object.keys(object.methods.public).length && (Object.keys(object.methods.public).length !== 1 && object.methods.public.constructor.body)) {
+            return true;
+        }
+        // has public variables
+        if (Object.keys(object.variables.public).length) {
+            return true;
+        }
+        // has event handlers
+        if (Object.keys(object.eventHandlers).length) {
+            return true;
+        }
+        // has getters
+        if (Object.keys(object.getters).length) {
+            return true;
+        }
+        // has setters
+        if (Object.keys(object.setters).length) {
+            return true;
+        }
+        // has classes
+        if (object.classes.length > 1 || (object.classes.length === 1 && !htmlTags[object.classes[0]])) {
+            return true;
+        }
+        // has children that should be generated
+        for (let i = 0, n = object.children.length; i < n; i++) {
+            return shouldGenerate(object.children[i]);
+        }
+
+        return false;
+    }
+
+    if (shouldGenerate(object)) {
         object.parents = object.classes;
-        body = getClassCode(className, object, object.id);
+        body = getClassCode(className, object, local ? null : object.id);
         setVariable();
     }
 
@@ -285,7 +314,8 @@ function getJSFromHierarchy(object, local = false, className) {
         }
 
         if (local) {
-            body += `__nazcaThis.__nazcaProtected.${object.name} = new ${className}();\n`;
+            body += `var ${object.name} = new ${className}();\n`;
+            body += `__nazcaThis.__nazcaProtected.${object.name} = ${object.name};\n`;
         } else {
             body += `window.${object.name} = new ${className}();\n`;
         }
@@ -294,10 +324,6 @@ function getJSFromHierarchy(object, local = false, className) {
             elements_.push(object.name);
         }
     }
-
-    object.children.forEach((child) => {
-        body += getJSFromHierarchy(child) || '';
-    });
 
     return body;
 }
@@ -313,49 +339,49 @@ function getClassCode(className, clss, elementID = null) {
     }
 
     let classVariables = {
-        protected: Object.assign({}, clss.variables.protected, clss.methods.protected),
-        public: Object.assign({}, clss.variables.public, clss.methods.public, clss.getters, clss.setters),
         css: Object.assign({}, clss.style),
-        attributes: Object.assign({}, clss.attributes)
+        attributes: Object.assign({}, clss.attributes),
+        getters: Object.assign({}, clss.getters),
+        setters: Object.assign({}, clss.setters)
     };
 
     constructorBody = clss.methods.public.constructor.body;
     if (constructorBody) {
-        constructorBody = getFunctionBody(replaceVariablesAndFunctions(constructorBody, classVariables));
+        constructorBody = getFunctionBody(constructorBody, classVariables);
     }
 
     body += `function ${className}(${constructorParameters.join(', ')}) {\n`;
-    if (constructorBody) {
-        if (!elementID) {
-            body += `${constructorBody}\n`;
-        }
-    }
 
     let isElementDefined = false;
     // Inherit classes
     let classes = [];
+    if (elementID) {
+        body += `this.__nazcaElement = document.getElementById('${elementID}');\n`;
+        isElementDefined = true;
+    }
+
     for (let i = clss.parents.length - 1; i >= 0; i--) {
         let parent = clss.parents[i];
         if (parent && !htmlTags[parent]) {
             /* eslint-disable no-useless-escape */
-            let regex = new RegExp(`\^\[${parent}\]\s{0,}}\(([a-z\d\s,]+)\);?`, 'gi');
+            let regex = new RegExp(`\^\[['"\`]${parent}\[['"\`]]\s*}\(([a-z\d\s,]+)\);?`, 'gi');
             if (regex.test(body)) {
                 let parametersString = regex.exec(body)[1];
                 body = body.replace(regex, `${parent}.call(this${parametersString.length ? `, ${parametersString}` : ''});\n`);
             } else {
-                body = body.replace(/\^\s?\(\s?\);?/, `${parent}.call(this};\n`);
+                regex = /\^\s*\(([a-zds,]+)\);?/gi;
+                if (regex.test(body)) {
+                    body = body.replace(regex, `${parent}.call(this${(parametersString.length ? `, ${parametersString}` : '')};\n`);
+                } else {
+                    body += `${parent}.call(this);\n`;
+                }
             }
 
             classes.push(parent);
         } else if (parent && !elementID) {
-            body += `this.__nazcaElement = document.createElement('${parent}');\n`;
+            body += `if(!this.__nazcaElement){\n this.__nazcaElement = document.createElement('${parent}');\n}\n`;
             isElementDefined = true;
         }
-    }
-
-    if (elementID) {
-        body += `this.__nazcaElement = document.getElementById('${elementID}');\n`;
-        isElementDefined = true;
     }
 
     body += 'var __nazcaThis = this;\n';
@@ -370,108 +396,89 @@ function getClassCode(className, clss, elementID = null) {
     let privateVariables = {};
     let protectedVariables = {};
     let publicVariables = {};
-
-    for (let variable in clss.variables.private) {
-        body += `var ${variable} = ${clss.variables.private[variable]};\n`;
-        checkDuplicates(className, variable, className);
-    }
-
-    for (let variable in clss.variables.public) {
-        if (variable === 'text') {
-            continue;
-        }
-        let attribute = clss.variables.public[variable];
-        if (variable.indexOfCode('-') >= 0) {
-            body += `__nazcaThis['${variable}'] = '${attribute}';\n`;
-        } else {
-            body += `__nazcaThis.${variable} = '${attribute}';\n`;
-        }
-        checkDuplicates(className, variable, className);
-    }
+    // TODO: Check for duplicates
 
     body += `__nazcaThis.__nazcaProtected = {};\n`;
+    ['variables', 'methods'].forEach((type) => {
+        ['private', 'protected', 'public'].forEach((access) => {
+            for (let variable in clss[type][access]) {
+                let value = clss[type][access][variable];
 
-    for (let variable in clss.variables.protected) {
-        body += `__nazcaThis.__nazcaProtected.${variable} = ${clss.variables.protected[variable]};\n`;
-        checkDuplicates(className, variable, className);
-    }
+                if (access === 'public' && type === 'variables' && variable === 'text') {
+                    continue;
+                }
 
-    if (clss.classes === undefined) {
-        clss.children.forEach((child) => {
-            let js = getJSFromHierarchy(child, true, className);
-            if (js) {
-                body += js;
+                if (access === 'public' && type === 'methods' && variable === 'constructor') {
+                    continue;
+                }
+
+                if (type === 'variables') {
+                    let madeVariable = access === 'private' ? variable : tools.makeVariable(variable);
+                    body += `var ${madeVariable}${value ? ` = ${value}` : ''};\n`;
+                    if (access === 'protected') {
+                        body += `__nazcaThis.__nazcaProtected.${variable} = ${madeVariable};\n`;
+                    } else if (access === 'public') {
+                        body += `__nazcaThis['${variable}'] = '${madeVariable}';\n`;
+                    }
+                } else {
+                    let method = variable;
+                    body += `function ${method} (${clss[type][access][method].parameters.join(', ')})`;
+                    body += replaceVariablesAndFunctions(clss[type][access][method].body, classVariables);
+                    body += `\n`;
+
+                    if (access === 'public') {
+                        body += `__nazcaThis.${method} = ${method};\n`;
+                    } else if (access === 'protected') {
+                        body += `__nazcaThis.__nazcaProtected.${method} = ${method};\n`;
+                    }
+                }
             }
         });
-    }
-
-    // Define public protected, private functions
-    for (let method in clss.methods.private) {
-        body += `function ${method} (${clss.methods.private[method].parameters.join(', ')})`;
-        let methodBody = replaceVariablesAndFunctions(clss.methods.private[method].body, classVariables);
-        body += methodBody;
-        body += `\n`;
-        checkDuplicates(className, method, className);
-    }
-
-    for (let method in clss.methods.public) {
-        if (method === 'constructor') {
-            continue;
-        }
-
-        body += `__nazcaThis.${method} = function (${clss.methods.public[method].parameters.join(', ')})`;
-        let methodBody = replaceVariablesAndFunctions(clss.methods.public[method].body, classVariables);
-        body += methodBody;
-        body += `\n`;
-        checkDuplicates(className, method, className);
-    }
-
-    for (let method in clss.methods.protected) {
-        body += `__nazcaThis.__nazcaProtected.${method} = function (${clss.methods.protected[method].parameters.join(', ')})`;
-        let methodBody = replaceVariablesAndFunctions(clss.methods.protected[method].body, classVariables);
-        body += methodBody;
-        body += `\n`;
-        checkDuplicates(className, method, className);
-    }
-
-    // Search for variables in constructor and replace them
+    });
 
     // Define attributes, css
     if (isElementDefined) {
         for (let key in clss.attributes) {
             body += `Object.defineProperty(__nazcaThis, '$${key}' ,{\n`;
-            body += `get: () => __nazcaThis.__nazcaElement.getAttribute('${key}'),\n`;
-            body += `set: (value) => {__nazcaThis.__nazcaElement.setAttribute('${key}', value);},\n`;
-            body += `configurable: true\n`;
+            body += `    get: () => __nazcaThis.__nazcaElement.getAttribute('${key}'),\n`;
+            body += `    set: (value) => {__nazcaThis.__nazcaElement.setAttribute('${key}', value);},\n`;
+            body += `    configurable: true\n`;
             body += `});\n`;
             body += `__nazcaThis.$${key} = '${clss.attributes[key]}';\n`;
         }
 
         for (let key in clss.style) {
             body += `Object.defineProperty(__nazcaThis, '${key}', {\n`;
-            body += `get: () => __nazcaThis.__nazcaElement.style['${key}'],\n`;
-            body += `set: (value) => {__nazcaThis.__nazcaElement.style['${key}'] =  value;},\n`;
-            body += `configurable: true\n`;
+            body += `    get: () => __nazcaThis.__nazcaElement.style['${key}'],\n`;
+            body += `    set: (value) => {__nazcaThis.__nazcaElement.style['${key}'] =  value;},\n`;
+            body += `    configurable: true\n`;
             body += `});\n`;
         }
 
         body += `Object.defineProperty(__nazcaThis, 'text', {\n`;
-        body += `get: () => __nazcaThis.__nazcaElement.innerText,\n`;
-        body += `set: (value) => {__nazcaThis.__nazcaElement.innerText =  value;},\n`;
-        body += `configurable: true\n`;
+        body += `    get: () => __nazcaThis.__nazcaElement.innerText,\n`;
+        body += `    set: (value) => {__nazcaThis.__nazcaElement.innerText =  value;},\n`;
+        body += `    configurable: true\n`;
         body += `});\n`;
+
+        body += `if (__nazcaThis.__nazcaElement.value !== undefined) {\n`;
+        body += `    Object.defineProperty(__nazcaThis, 'value', {\n`;
+        body += `        get: () => __nazcaThis.__nazcaElement.value,\n`;
+        body += `        set: (value) => {__nazcaThis.__nazcaElement.value =  value;},\n`;
+        body += `        configurable: true\n`;
+        body += `    });\n`;
+        body += `}\n`;
 
         classes.forEach((cls) => {
             body += `__nazcaThis.__nazcaElement.classList.add('${cls}');\n`;
         });
-        body += `__nazcaThis.__nazcaElement.classList.add('${className}');\n`;
     }
 
     // Define getters, setters
     let definedGetters = {};
     for (let key in clss.getters) {
         body += `Object.defineProperty(__nazcaThis, '${key}'{\n`;
-        body += `get: () => ${clss.getters[key].body},\n`;
+        body += `    get: () => ${clss.getters[key].body},\n`;
         if (clss.setters) {
             body += `set: (${clss.setters[key].parameters.join(', ')}) => ${clss.setters[key].body},\n`;
         }
@@ -486,8 +493,8 @@ function getClassCode(className, clss, elementID = null) {
         }
 
         body += `Object.defineProperty(__nazcaThis, '${key}', {\n`;
-        body += `set: (${clss.setters[key].parameters.join(', ')}) => ${clss.setters[key].body},\n`;
-        body += `configurable: true\n`;
+        body += `    set: (${clss.setters[key].parameters.join(', ')}) => ${clss.setters[key].body},\n`;
+        body += `    configurable: true\n`;
         body += `});\n`;
     }
 
@@ -497,18 +504,18 @@ function getClassCode(className, clss, elementID = null) {
     }
 
     if (isElementDefined) {
-        body += `var __nazcaChildren = {}\n`;
+        body += `var __nazcaChildren = {};\n`;
         body += `__nazcaChildren.add = (object) => {\n`;
         body += `if (object.__nazcaElement) {\n`;
         body += `__nazcaThis.__nazcaElement.appendChild(object.__nazcaElement)\n`;
         body += `} else {\n`;
-        body += `console.error("Can't append a child without element")}}\n`;
+        body += `console.error("Can't append a child without element")}};\n`;
 
         body += `__nazcaChildren.remove = (object) => {\n`;
         body += `if (object.__nazcaElement) {\n`;
         body += `__nazcaThis.__nazcaElement.removeChild(object.__nazcaElement)\n`;
         body += `} else {\n`;
-        body += `console.error("Can't remove a child without element")}}\n`;
+        body += `console.error("Can't remove a child without element")}};\n`;
 
         body += `Object.defineProperty(__nazcaThis, 'children', {\n`;
         body += `get: () => __nazcaChildren,\n`;
@@ -518,17 +525,39 @@ function getClassCode(className, clss, elementID = null) {
         // TODO Probably should add some insertion function as well and removal by index
     }
 
+    clss.children.forEach((child) => {
+        let id = tools.nextID();
+        let js = getJSFromHierarchy(child, elementID ? false : true, id,
+            Object.assign({}, clss.variables.protected, clss.variables.public, clss.attributes, clss.css));
+
+        if (js) {
+            body += js;
+            body += `__nazcaThis.children.add(${elementID ? `window.${child.name}` : child.name});\n`;
+        }
+    });
+
+    if (clss.variables.public.text) {
+        body += `__nazcaThis.text = '${clss.variables.public.text}';\n`;
+    }
+
+    if (clss.variables.public.value) {
+        body += `__nazcaThis.value = '${clss.variables.public.value}';\n`;
+    }
+
+    for (let attr in clss.attributes) {
+        body += `__nazcaThis['${attr}'] = '${clss.attributes[attr]}';\n`;
+    }
+    for (let css in clss.style) {
+        body += `this['${css}'] = '${clss.style[css]}';\n`;
+    }
+
+    if (constructorBody) {
+        body += `${constructorBody}\n`;
+    }
+
     body += `}\n`;
 
     return body;
-
-    function checkDuplicates(className, variable) {
-        if (privateVariables[variable] === 1 || protectedVariables[variable] === 1 || publicVariables[variable] === 1) {
-            /* eslint-disable no-throw-literal */
-            throw {message: `private/protected/public variable or function with the same name (${className}::${variable}) is not allowed`};
-        }
-        protectedVariables[variable] = 1;
-    }
 }
 
 function getHTMLObject(object, indent = 0) {
@@ -657,7 +686,7 @@ function recursivelyInclude(file) {
 function getFunctionBody(bodyWithBrackets) {
     let openBracket = bodyWithBrackets.indexOfCode('{');
     let closeBracket = tools.findClosingBracket(bodyWithBrackets, openBracket + 1);
-    return bodyWithBrackets.slice(openBracket + 1, closeBracket - 1);
+    return bodyWithBrackets.slice(openBracket + 1, closeBracket);
 }
 
 function replaceVariablesAndFunctions(body, classVariables) {
@@ -665,10 +694,10 @@ function replaceVariablesAndFunctions(body, classVariables) {
     let blockIndex = 0;
     let defined = [];
 
-    let variables = Object.keys(classVariables.protected)
-        .concat(Object.keys(classVariables.public)).filter((variable) => variable !== 'constructor')
-        .concat(Object.keys(classVariables.css))
+    let variables = Object.keys(classVariables.css)
         .concat(Object.keys(classVariables.attributes))
+        .concat(Object.keys(classVariables.getters))
+        .concat(Object.keys(classVariables.setters))
         .concat(['text']);
 
     let innerBody = body.slice(1, body.length - 2);
@@ -720,7 +749,7 @@ function replaceVariablesAndFunctions(body, classVariables) {
 
                 variables.forEach((variable) => {
                     if (!(defined[blockIndex] && defined[blockIndex][variable]) && part.indexOf(variable) >= 0) {
-                        part = replaceVariable(part, variable, !!classVariables.protected[variable]);
+                        part = replaceVariable(part, variable);
                     }
                 });
 
@@ -736,19 +765,17 @@ function replaceVariablesAndFunctions(body, classVariables) {
     return `{\n${lines.join('\n')}}\n`;
 }
 
-function replaceVariable(content, variableName, isProtected = false) {
+function replaceVariable(content, variableName) {
     tools.buildStrings(content);
-    [variableName, `['${variableName}']`, `[\`${variableName}\`]`, `["${variableName}"]`].forEach((variable) => {
+    [variableName, `\\['${variableName}'\\]`, `\\[\`${variableName}\`\\]`, `\\["${variableName}"\\]`].forEach((variable) => {
         let index = content.indexOfCode(variable);
-        let point = variable.indexOf('[') === 0 ? '' : '.';
-        let replacement = isProtected ? `__nazcaThis.__nazcaProtected${point}${variableName}` : `__nazcaThis${point}${variable}`;
-        while (index >= 0) {
-            if (content.charAt(index - 1) !== '.') {
-                content = `${content.slice(0, index)}${replacement}${content.slice(index + variable.length)}`;
-            }
-            index += replacement.length;
-            index = content.indexOfCode(variable, index);
+        if (index < 0) {
+            return;
         }
+
+        let point = variable.indexOf('[') === 0 ? '' : '.';
+        let replacement = `__nazcaThis${point}${variable}`;
+        content = content.replace(new RegExp(`\\b${variable}\\b`, 'g'), replacement);
     });
 
     return content;
