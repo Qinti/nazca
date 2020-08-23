@@ -392,12 +392,27 @@ function getClassCode(className, clss, elementID = null) {
         body += `};\n`;
     }
 
-    // Define variables
-    let privateVariables = {};
-    let protectedVariables = {};
-    let publicVariables = {};
-    // TODO: Check for duplicates
+    let defined = {};
+    let childrenNames = {};
+    for (let child in clss.children) {
+        let name = clss.children[child].name;
+        if (name) {
+            childrenNames[name] = 1;
+        }
+    }
+    for (let key in Object.assign({}, clss.variables.public, clss.variables.private, clss.variables.protected,
+        clss.methods.public, clss.methods.private, clss.methods.protected, clss.style,
+        childrenNames)) {
+        defined[key] = defined[key] + 1 || 1;
 
+        if (defined[key] > 1) {
+            throw {
+                message: `Class '${className}' has a duplicate variable '${key}'. public/protected/private methods and variables should have unique names`
+            }
+        }
+    }
+
+    // Define variables
     body += `__nazcaThis.__nazcaProtected = {};\n`;
     ['variables', 'methods'].forEach((type) => {
         ['private', 'protected', 'public'].forEach((access) => {
