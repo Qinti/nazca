@@ -347,7 +347,7 @@ function getClassCode(className, clss, elementID = null) {
 
     constructorBody = clss.methods.public.constructor.body;
     if (constructorBody) {
-        constructorBody = getFunctionBody(constructorBody, classVariables);
+        constructorBody = getFunctionBody(replaceVariablesAndFunctions(constructorBody, classVariables, constructorParameters));
     }
 
     body += `function ${className}(${constructorParameters.join(', ')}) {\n`;
@@ -438,7 +438,7 @@ function getClassCode(className, clss, elementID = null) {
                 } else {
                     let method = variable;
                     body += `function ${method} (${clss[type][access][method].parameters.join(', ')})`;
-                    body += replaceVariablesAndFunctions(clss[type][access][method].body, classVariables);
+                    body += replaceVariablesAndFunctions(clss[type][access][method].body, classVariables, clss[type][access][method].parameters);
                     body += `\n`;
 
                     if (access === 'public') {
@@ -454,7 +454,7 @@ function getClassCode(className, clss, elementID = null) {
     // Define attributes, css
     if (isElementDefined) {
         for (let key in clss.attributes) {
-            body += `Object.defineProperty(__nazcaThis, '$${key}' ,{\n`;
+            body += `Object.defineProperty(__nazcaThis, '$${key}', {\n`;
             body += `    get: () => __nazcaThis.__nazcaElement.getAttribute('${key}'),\n`;
             body += `    set: (value) => {__nazcaThis.__nazcaElement.setAttribute('${key}', value);},\n`;
             body += `    configurable: true\n`;
@@ -492,10 +492,10 @@ function getClassCode(className, clss, elementID = null) {
     // Define getters, setters
     let definedGetters = {};
     for (let key in clss.getters) {
-        body += `Object.defineProperty(__nazcaThis, '${key}'{\n`;
-        body += `    get: () => ${clss.getters[key].body},\n`;
+        body += `Object.defineProperty(__nazcaThis, '${key}', {\n`;
+        body += `    get: () => ${replaceVariablesAndFunctions(clss.getters[key].body, classVariables, clss.getters[key].parameters)},\n`;
         if (clss.setters) {
-            body += `set: (${clss.setters[key].parameters.join(', ')}) => ${clss.setters[key].body},\n`;
+            body += `set: (${clss.setters[key].parameters.join(', ')}) => ${replaceVariablesAndFunctions(clss.setters[key].body, classVariables, clss.setters[key].parameters)},\n`;
         }
         body += `configurable: true\n`;
         body += `});\n`;
@@ -508,14 +508,14 @@ function getClassCode(className, clss, elementID = null) {
         }
 
         body += `Object.defineProperty(__nazcaThis, '${key}', {\n`;
-        body += `    set: (${clss.setters[key].parameters.join(', ')}) => ${clss.setters[key].body},\n`;
+        body += `    set: (${clss.setters[key].parameters.join(', ')}) => ${replaceVariablesAndFunctions(clss.setters[key].body, classVariables, clss.setters[key].parameters)},\n`;
         body += `    configurable: true\n`;
         body += `});\n`;
     }
 
     // Define event listeners
     for (let event in clss.eventHandlers) {
-        body += `__nazcaThis.__nazcaElement.addEventListener('${event}',function (${clss.eventHandlers[event].parameters.join(', ')}) ${clss.eventHandlers[event].body});\n`;
+        body += `__nazcaThis.__nazcaElement.addEventListener('${event}',function (${clss.eventHandlers[event].parameters.join(', ')}) ${replaceVariablesAndFunctions(clss.eventHandlers[event].body, classVariables, clss.eventHandlers[event].parameters)});\n`;
     }
 
     if (isElementDefined) {
@@ -704,16 +704,17 @@ function getFunctionBody(bodyWithBrackets) {
     return bodyWithBrackets.slice(openBracket + 1, closeBracket);
 }
 
-function replaceVariablesAndFunctions(body, classVariables) {
+function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
     // separate function on lines
     let blockIndex = 0;
     let defined = [];
 
-    let variables = Object.keys(classVariables.css)
-        .concat(Object.keys(classVariables.attributes))
-        .concat(Object.keys(classVariables.getters))
-        .concat(Object.keys(classVariables.setters))
-        .concat(['text']);
+    let variables = Object.keys(Object.assign({}, classVariables.css, classVariables.attributes, classVariables.getters,
+        classVariables.setters)).concat(['text']).concat(['value']);
+
+    for (let except in exceptParameters) {
+        variables = variables.filter((value) => value !== exceptParameters[except]);
+    }
 
     let innerBody = body.slice(1, body.length - 2);
     tools.buildStrings(innerBody);
