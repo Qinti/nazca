@@ -299,7 +299,7 @@ function getClassMap(content, startIndex) {
 
         let property;
         try {
-            property = parseNextProperty(firstBracket);
+            property = parseNextProperty(firstBracket + 1);
         } catch (e) {
             Object.assign(e, {classMap});
             throw e;
@@ -699,8 +699,8 @@ function getListOfJSONFiles(content) {
     return jsonFiles;
 }
 
-function makeVariable(str){
-    return `__nazcaVar_${str.replace(/[^a-z\d_$]/ig,'_')}`;
+function makeVariable(str) {
+    return `__nazcaVar_${str.replace(/[^a-z\d_$]/ig, '_')}`;
 }
 
 module.exports = {

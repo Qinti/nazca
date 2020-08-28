@@ -710,7 +710,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
     let defined = [];
 
     let variables = Object.keys(Object.assign({}, classVariables.css, classVariables.attributes, classVariables.getters,
-        classVariables.setters)).concat(['text']).concat(['value']);
+        classVariables.setters)).concat(['text', 'value', 'children']);
 
     for (let except in exceptParameters) {
         variables = variables.filter((value) => value !== exceptParameters[except]);
@@ -786,6 +786,10 @@ function replaceVariable(content, variableName) {
     [variableName, `\\['${variableName}'\\]`, `\\[\`${variableName}\`\\]`, `\\["${variableName}"\\]`].forEach((variable) => {
         let index = content.indexOfCode(variable);
         if (index < 0) {
+            return;
+        }
+
+        if (/[a-z.\d]/i.test(content.charAt(index - 1))) {
             return;
         }
 
