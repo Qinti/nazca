@@ -212,7 +212,7 @@ function compile(file, name, out) {
         }
     }).then(() => {
         // 9. create global objects from hierarchy
-        js_ += `document.addEventListener("DOMContentLoaded", function() {\n`;
+        js_ += `document.addEventListener("DOMContentLoaded", () => {\n`;
         hierarchy_.children.forEach((child) => {
             js_ += getJSFromHierarchy(child) || '';
         });
@@ -332,6 +332,7 @@ function getClassCode(className, clss, elementID = null) {
     let constructorParameters = [];
     let constructorBody;
     let body = '';
+    let afterConstructor = '';
 
     // get constructor inputs
     if (clss.methods.public.constructor && clss.methods.public.constructor.parameters) {
@@ -371,6 +372,7 @@ function getClassCode(className, clss, elementID = null) {
             } else {
                 regex = /\^\s*\(([a-zds,]+)\);?/gi;
                 if (regex.test(body)) {
+                    let parametersString = regex.exec(body)[1];
                     body = body.replace(regex, `${parent}.call(this${(parametersString.length ? `, ${parametersString}` : '')};\n`);
                 } else {
                     body += `${parent}.call(this);\n`;
@@ -387,7 +389,7 @@ function getClassCode(className, clss, elementID = null) {
     body += 'var __nazcaThis = this;\n';
 
     if (constructorBody && elementID) {
-        body += `__nazcaThis.__nazcaElementConstructor = function () {\n`;
+        body += `__nazcaThis.__nazcaElementConstructor = () => {\n`;
         body += `${constructorBody}\n`;
         body += `};\n`;
     }
@@ -412,8 +414,41 @@ function getClassCode(className, clss, elementID = null) {
         }
     }
 
+    body += `__nazcaThis.__nazcaProtected = __nazcaThis.__nazcaProtected || {};\n`;
+
+    // Define public and protected parent variables as local variables
+    if (classes.length) {
+        ['variables', 'methods'].forEach((type) => {
+            ['protected', 'public'].forEach((access) => {
+                for (let parent in clss.parents) {
+                    for (let variable in classes_[clss.parents[parent]][type][access]) {
+                        if (variable !== 'constructor') {
+                            body += `var ${variable} = ${access === 'protected' ? '__nazcaThis.__nazcaProtected' : '__nazcaThis'}.${variable};\n`;
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    // find all parents that should be overridden
+    ['protected', 'public'].forEach((access) => {
+        for (let method in clss.methods[access]) {
+            let methodBody = clss.methods[access][method].body;
+            let reParentMethod = /\^([a-z\n_$]+)\s*\(/gi;
+            let exec = reParentMethod.exec(methodBody);
+            if (exec) {
+                exec.shift();
+
+                exec.forEach((method) => {
+                    body += `var __nazcaParent_${method} = ${method};\n`;
+                    clss.methods[access][method].body = methodBody.replace(reParentMethod, `__nazcaParent_${method} (`);
+                });
+            }
+        }
+    });
+
     // Define variables
-    body += `__nazcaThis.__nazcaProtected = {};\n`;
     ['variables', 'methods'].forEach((type) => {
         ['private', 'protected', 'public'].forEach((access) => {
             for (let variable in clss[type][access]) {
@@ -431,20 +466,20 @@ function getClassCode(className, clss, elementID = null) {
                     let madeVariable = access === 'private' ? variable : tools.makeVariable(variable);
                     body += `var ${madeVariable}${value ? ` = ${value}` : ''};\n`;
                     if (access === 'protected') {
-                        body += `__nazcaThis.__nazcaProtected.${variable} = ${madeVariable};\n`;
+                        afterConstructor += `__nazcaThis.__nazcaProtected.${variable} = ${madeVariable};\n`;
                     } else if (access === 'public') {
-                        body += `__nazcaThis['${variable}'] = '${madeVariable}';\n`;
+                        afterConstructor += `__nazcaThis['${variable}'] = '${madeVariable}';\n`;
                     }
                 } else {
                     let method = variable;
-                    body += `function ${method} (${clss[type][access][method].parameters.join(', ')})`;
+                    body += `var ${method} = (${clss[type][access][method].parameters.join(', ')}) => `;
                     body += replaceVariablesAndFunctions(clss[type][access][method].body, classVariables, clss[type][access][method].parameters);
                     body += `\n`;
 
                     if (access === 'public') {
-                        body += `__nazcaThis.${method} = ${method};\n`;
+                        afterConstructor += `__nazcaThis.${method} = ${method};\n`;
                     } else if (access === 'protected') {
-                        body += `__nazcaThis.__nazcaProtected.${method} = ${method};\n`;
+                        afterConstructor += `__nazcaThis.__nazcaProtected.${method} = ${method};\n`;
                     }
                 }
             }
@@ -542,7 +577,7 @@ function getClassCode(className, clss, elementID = null) {
 
     clss.children.forEach((child) => {
         let id = tools.nextID();
-        let js = getJSFromHierarchy(child, elementID ? false : true, id,
+        let js = getJSFromHierarchy(child, !elementID, id,
             Object.assign({}, clss.variables.protected, clss.variables.public, clss.attributes, clss.css));
 
         if (js) {
@@ -569,6 +604,9 @@ function getClassCode(className, clss, elementID = null) {
     if (constructorBody) {
         body += `${constructorBody}\n`;
     }
+
+    body += afterConstructor;
+    afterConstructor = '';
 
     body += `}\n`;
 

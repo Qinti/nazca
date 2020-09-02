@@ -700,7 +700,7 @@ function getListOfJSONFiles(content) {
 }
 
 function makeVariable(str) {
-    return `__nazcaVar_${str.replace(/[^a-z\d_$]/ig, '_')}`;
+    return `${str.replace(/[^a-z\d_$]/ig, '_')}`;
 }
 
 module.exports = {
