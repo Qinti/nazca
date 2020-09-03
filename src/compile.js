@@ -126,6 +126,7 @@ function compile(file, name, out) {
     // 1. Find all includes and merge the file into one
     return recursivelyInclude(file).then((content) => {
         content = content.replace(/''/g, "'");
+        tools.buildStrings(content);
         content_ = content;
         // 2. Create a map of classes
         classes_ = tools.getClassMap(content);
@@ -196,11 +197,11 @@ function compile(file, name, out) {
         let jsonFiles = tools.getListOfJSONFiles(content_);
         jsonFiles.forEach(({name, value}) => {
             let id = tools.nextID();
-            head.appendChild(`<script src="${value}" type="application/json" id="${id}"></script>`);
-            head.appendChild(`
+            head.appendChild(`<script src="${value}"id="${id}"></script>`);
+            /*head.appendChild(`
                 <script type="application/javascript">
                     window['${name}']=JSON.parse(document.getElementById('${id}').value);
-                </script>`);
+                </script>`);*/
         });
 
         html_ = root.innerHTML;
