@@ -681,8 +681,8 @@ function getListOfJSONFiles(content) {
         let valueEnd = content.indexOfCode(';', jsonIndex);
         let jsonValue = content.slice(valueStart + 1, valueEnd).trim();
         let name = jsonValue.split('=');
-        let value = name[1];
-        name = name[0];
+        let value = name[1].trim();
+        name = name[0].trim();
 
         if (!name || !value) {
             let [line1, column1] = calculateLineColumn(content, jsonValue);

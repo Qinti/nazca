@@ -26,8 +26,8 @@ let elements_ = [];
  * 4. Starting generating the html/css/js
  * 5. Go through the classes - define css classes with properties
  * 6. Go through the hierarchy - define html, generate ids for each element that can be referenced
- * 7. Search for *json, add <script> to the hierarchy
- * 8. Go though the classes - generate functions (JS classes)
+ * 7. Go though the classes - generate functions (JS classes)
+ * 8. Search for *json, add <script> to the hierarchy
  * 9. Create global objects from hierarchy
  * 10. Write html, css, js file for each page
  */
@@ -193,26 +193,57 @@ function compile(file, name, out) {
         head.appendChild(`<script src="${out.js}/${name}.js" type="application/javascript"></script>`);
         head.appendChild(`<link rel="stylesheet" type="text/css" href="${out.css}/${name}.css">`);
 
-        // 7. Search for *json, add <script> to the hierarchy
-        let jsonFiles = tools.getListOfJSONFiles(content_);
-        jsonFiles.forEach(({name, value}) => {
-            let id = tools.nextID();
-            head.appendChild(`<script src="${value}"id="${id}"></script>`);
-            /*head.appendChild(`
-                <script type="application/javascript">
-                    window['${name}']=JSON.parse(document.getElementById('${id}').value);
-                </script>`);*/
-        });
-
         html_ = root.innerHTML;
     }).then(() => {
-        // 8. Go though the classes - generate functions (JS classes)
+        // 7. Go though the classes - generate functions (JS classes)
 
         for (let className in classes_) {
             let clss = classes_[className];
             let body = getClassCode(className, clss);
             js_ += body;
         }
+
+        // 8. Search for *json, add <script> to the hierarchy
+        let jsonFiles = tools.getListOfJSONFiles(content_);
+        jsonFiles.forEach(({name, value}) => {
+            js_ += `{
+                let xhr = new XMLHttpRequest();
+                xhr.open('GET', '${value}');
+                let isResolved = false;
+                let callbacks_ = [];
+        
+                xhr.onload = () => {
+                    if (xhr.status == 404) {
+                        return   console.error("Could not get '${value}'");
+                    }
+                    
+                    isResolved = true;
+                    try {
+                        let data = JSON.parse(xhr.response);
+                        Object.assign(window['${name}'], data);
+                    } catch (e) {
+                        return console.error("The json '${name}' at path '${value}' is not correct and can't be parsed.");
+                    }
+        
+                    callbacks_.forEach((callback) => {
+                        callback(window['${name}']);
+                    });
+                    callbacks_ = [];
+                };
+        
+                xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+                xhr.send();
+        
+                window['${name}'] = {};
+                window['${name}'].ready = (callback) => {
+                    if (isResolved) {
+                        callback();
+                     } else {
+                        callbacks_.push(callback);
+                     }
+                };
+            }`;
+        });
     }).then(() => {
         // 9. create global objects from hierarchy
         js_ += `document.addEventListener("DOMContentLoaded", () => {\n`;
@@ -836,7 +867,7 @@ function replaceVariable(content, variableName) {
 
         let point = variable.indexOf('[') === 0 ? '' : '.';
         let replacement = `__nazcaThis${point}${variable}`;
-        content = content.replace(new RegExp(`\\b${variable}\\b`, 'g'), replacement);
+        content = `${content.slice(0, index)}${replacement}${content.slice(index + variable.length)}`;
     });
 
     return content;
