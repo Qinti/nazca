@@ -447,6 +447,9 @@ function parseProperty(content, index) {
         }
 
         value = content.slice(nameEnd, nextColon + 1).trim();
+        if (value[0]!=='/' && value[0]!=='[' && parseInt(value) != value) {
+            value = `'${value.replace(/'/g, `\'`)}'`;
+        }
         type = 'variable';
         index = nextColon;
     }
@@ -686,14 +689,14 @@ function getListOfJSONFiles(content) {
             let [line2, column2] = calculateLineColumn(content, valueEnd);
 
             throw {
-                message: `*json directive is invalid. Sho8uld be in format of '*json: objectName=path/to/file.json;'`,
+                message: `*json directive is invalid. Should be in format of '*json: objectName=path/to/file.json;'`,
                 line: line1 === line2 ? line1 : [line1, line2],
                 column: [column1, column2]
             }
         }
 
         jsonFiles.push({name, value});
-        jsonIndex = content.indexOfCode('*json', jsonIndex);
+        jsonIndex = content.indexOfCode('*json', valueEnd);
     }
 
     return jsonFiles;

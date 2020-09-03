@@ -39,7 +39,7 @@ let configLoadPromise = new Promise((resolve, reject) => {
         }
 
         if (!files.includes('.nazca')) {
-            return reject(new Error('Folder does not contain .nazca config file. Please add .nazca file to the project with compile instructions'));
+            return reject(new Error(`Folder does not contain .nazca config file. Please add .nazca file to the project with compile instructions. \nRun 'nazca init' to create default .nazca configuration.`));
         }
 
         fs.readFile('.nazca', (err, content) => {
@@ -93,8 +93,10 @@ configLoadPromise.then(async (config) => {
         }
     } else {
         /* eslint-disable no-throw-literal */
-        throw {message: '.nazca config file should have sources array'}
+        throw {message: '.nazca config file should have sources array'};
     }
+}).catch((err) => {
+    console.error(err.message);
 });
 
 function read(file) {
@@ -587,18 +589,18 @@ function getClassCode(className, clss, elementID = null) {
     });
 
     if (clss.variables.public.text) {
-        body += `__nazcaThis.text = '${clss.variables.public.text}';\n`;
+        body += `__nazcaThis.text = ${clss.variables.public.text};\n`;
     }
 
     if (clss.variables.public.value) {
-        body += `__nazcaThis.value = '${clss.variables.public.value}';\n`;
+        body += `__nazcaThis.value = ${clss.variables.public.value};\n`;
     }
 
     for (let attr in clss.attributes) {
-        body += `__nazcaThis['${attr}'] = '${clss.attributes[attr]}';\n`;
+        body += `__nazcaThis['${attr}'] = ${clss.attributes[attr]};\n`;
     }
     for (let css in clss.style) {
-        body += `this['${css}'] = '${clss.style[css]}';\n`;
+        body += `this['${css}'] = ${clss.style[css]};\n`;
     }
 
     if (constructorBody) {
