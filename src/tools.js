@@ -447,8 +447,8 @@ function parseProperty(content, index) {
         }
 
         value = content.slice(nameEnd, nextColon + 1).trim();
-        if (value[0]!=='/' && value[0]!=='[' && parseInt(value) != value) {
-            value = `'${value.replace(/'/g, `\'`)}'`;
+        if (value[0] !== '/' && value[0] !== '[' && parseInt(value) != value) {
+            value = `'${value.replace(/'/g, `\\'`)}'`;
         }
         type = 'variable';
         index = nextColon;
@@ -592,7 +592,7 @@ function getChildren(content, index = 0) {
             index = content.indexOfCode(';', index) + 1;
         } else if (reFontFace.test(nextWord)) {
             let openingBracket = content.indexOfCode('{', index);
-            let closingBracket = content.findClosingBracket(content, openingBracket);
+            let closingBracket = findClosingBracket(content, openingBracket);
             index = content.indexOfCode(';', closingBracket) + 1;
         } else if (reClass.test(nextWord)) {
             let openingBracket = content.indexOfCode('{', index);

@@ -147,6 +147,17 @@ function compile(file, name, out) {
         hierarchy_ = {children: tools.getChildren(classless)};
     }).then(() => {
         // 4. Starting generating the html/css/js
+
+        // Handle the *font-face directive
+        let index = content_.indexOfCode('*font-face:');
+        while (index >= 0) {
+            let openingBracket = content_.indexOfCode('{', index);
+            let closingBracket = tools.findClosingBracket(content_, openingBracket);
+
+            css_ += `@font-face ${content_.slice(openingBracket, closingBracket + 1)}\n`;
+            index = content_.indexOfCode('*font-face:', closingBracket);
+        }
+
         // 5. Go through the classes - define css classes with properties
 
         for (let className in classes_) {
@@ -163,7 +174,9 @@ function compile(file, name, out) {
                 });
 
                 for (let property in classes_[className].style) {
-                    css_ += `    ${property}: ${classes_[className].style[property]};\n`
+                    if (classes_[className].style[property] != `''`) {
+                        css_ += `    ${property}: ${classes_[className].style[property]};\n`
+                    }
                 }
 
                 css_ += `}\n\n`;
