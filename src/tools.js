@@ -10,7 +10,7 @@ const cssProperties = require('./cssProperties');
 const reObject = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}{/i;
 const reVariable = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}.{0,};/i;
 const reMethod = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}\([a-z_\d,\s=]{0,}\)\s{0,}{/i;
-const reChild = /^{?[\s\n]{0,}[.a-z][a-z\d.]+\s{0,}{/i;
+const reChild = /^{?[\s\n]{0,}[.a-z][a-z\d.]+\s{0,}({|;)/i;
 
 /* eslint-disable no-extend-native */
 String.prototype.regexIndexOf = function (regex, startIndex = 0) {
@@ -429,7 +429,7 @@ function parseProperty(content, index) {
         let bodyStart = content.indexOfCode('{', nameEnd + 1);
         let bodyEnd = findClosingBracket(content, bodyStart);
         let body = content.slice(bodyStart, bodyEnd + 1);
-        index = bodyEnd + 1;
+        index = bodyEnd + 2;
         value = body;
     } else {
         let nextColon = content.indexOfCode(';', nameEnd + 1);
@@ -524,7 +524,14 @@ function getNextChild(content, index = 0) {
     };
 
     if (semiColon < openingBracket) {
-        return Object.assign({start: elementIndex, end: semiColon + 1, name, classes, children}, properties);
+        return Object.assign({
+            start: elementIndex,
+            end: semiColon + 1,
+            name,
+            classes,
+            children,
+            type: 'child'
+        }, properties);
     }
 
     let nextChildEnd = openingBracket + 1;

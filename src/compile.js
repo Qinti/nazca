@@ -168,14 +168,22 @@ function compile(file, name, out) {
                 parents.forEach((parent) => {
                     if (classes_[parent] && Object.keys(classes_[parent].style).length) {
                         for (let property in classes_[parent].style) {
-                            css_ += `    ${property}: ${classes_[parent].style[property]};\n`
+                            let value = classes_[parent].style[property];
+                            if (value.charAt(0) === value.charAt(value.length - 1) && value.charAt(0) === `'`) {
+                                value = value.slice(1, value.length - 1);
+                            }
+                            css_ += `    ${property}: ${value};\n`
                         }
                     }
                 });
 
                 for (let property in classes_[className].style) {
-                    if (classes_[className].style[property] != `''`) {
-                        css_ += `    ${property}: ${classes_[className].style[property]};\n`
+                    let value = classes_[className].style[property];
+                    if (value != `''`) {
+                        if (value.charAt(0) === value.charAt(value.length - 1) && value.charAt(0) === `'`) {
+                            value = value.slice(1, value.length - 1);
+                        }
+                        css_ += `    ${property}: ${value};\n`
                     }
                 }
 
@@ -433,6 +441,12 @@ function getClassCode(className, clss, elementID = null) {
         }
     }
 
+    // go through the parents in search of html tag
+    if (!isElementDefined) {
+        let parentsAreGraphical = clss.parents.map((parent) => isGraphicalClass(parent));
+        isElementDefined = parentsAreGraphical.some((isGraphical) => isGraphical);
+    }
+
     body += 'var __nazcaThis = this;\n';
 
     if (constructorBody && elementID) {
@@ -541,7 +555,6 @@ function getClassCode(className, clss, elementID = null) {
             body += `    set: (value) => {__nazcaThis.__nazcaElement.setAttribute('${key}', value);},\n`;
             body += `    configurable: true\n`;
             body += `});\n`;
-            body += `__nazcaThis.$${key} = '${clss.attributes[key]}';\n`;
         }
 
         for (let key in clss.style) {
@@ -642,7 +655,7 @@ function getClassCode(className, clss, elementID = null) {
     }
 
     for (let attr in clss.attributes) {
-        body += `__nazcaThis['${attr}'] = ${clss.attributes[attr]};\n`;
+        body += `__nazcaThis['$${attr}'] = ${clss.attributes[attr]};\n`;
     }
     for (let css in clss.style) {
         body += `this['${css}'] = ${clss.style[css]};\n`;
@@ -884,4 +897,18 @@ function replaceVariable(content, variableName) {
     });
 
     return content;
+}
+
+function isGraphicalClass(clss) {
+    if (!clss) {
+        return false;
+    }
+
+    if (htmlTags[clss]) {
+        return true;
+    }
+
+    let parentsAreGraphical = classes_[clss].parents.map((parent) => isGraphicalClass(parent));
+
+    return parentsAreGraphical.some((isGraphical) => isGraphical);
 }
