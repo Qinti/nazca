@@ -74,7 +74,6 @@ nazca
 ### Analyze
 While compiling drops the process as soon as it finds the error in your source file, analyser checks the syntax and 
 outputs you the list of classes, hierarchy and the list of errors (if any). 
-and where.
 ```shell script
 nazca analyse /your/file.nazca 
 ```
@@ -196,7 +195,7 @@ In the code above, we created a class, which extends the default nazca'a `div` c
 have a new element, which basically a `div` html tag. It will have `class` attribute with the value of `HelloWorld`. 
 Compiler also should create a css with a style, defined in this class.
 if you compile the code above, you'll see that the CSS file is not empty, but contains css class. HTML tag we had 
-previously does not have `style` anymore, but uses `class` attribute.
+previously uses `class` attribute now.
 
 #### Separating the file
 In nazca we can separate the file, by using `*include` directive. It shows the compiler where to take the source 
@@ -255,10 +254,11 @@ class SomeClass {
     };
 };
 ```
-JavaScript has no concept of the visibility, other languages could have it. The `public` methods and properties are 
-the entities that are seen from the other classes (like regular JS properties and functions).
+JavaScript has no concept of the visibility, and you may not be familiar with it from other languages. The `public` 
+methods and properties are the entities that are seen from the other classes (like regular JS properties and functions).
 `private` are visible only inside the object of the class, to which they belong. `protected` are the same as 
-`private`, but also visible to all inherited classes.    
+`private`, but also visible to all (and only) inherited classes. You can read 
+<a href="https://en.wikipedia.org/wiki/Access_modifiers" target="_blank">this wikipedia article</a> if you want to know more.
   
 Variable (property) could be public/protected/private as well as it could be of a different type - string, numeric, 
 regex, object, array.
@@ -276,7 +276,7 @@ class SomeClass {
 ``` 
 Note: Don't forget to end each variable and function with `;`  
   
-Let's modify our `nazca/include.js` to change the color of the text every n seconds.
+Let's modify our `nazca/include.js` to change the color of the text every `n` seconds.
 ```javascript
 class HelloWorld < div {
     text: Hello world;
@@ -316,8 +316,8 @@ class InvalidClass {
 ``` 
 We declared a public method, a private method and a public variable with the same names. Compiler does not accept it.
   
-The example has a public method and a couple of private parameters defined, but it still does nothing, and the method is 
-never called. In the next section, we will discuss on how to actually call it.
+Returning to the main example - it has a public method and a couple of private parameters defined, but it still does 
+nothing, and the method is never called. In the next section, we will discuss on how to actually call it.
 
 #### Construction
 Every class in nazca could have a special method, called `constructor`. This is the first method that is executed, when 
@@ -355,8 +355,7 @@ class HelloWorld < div {
 
 #### Event handlers
 In a previous tutorial we implemented a page with "Hello World" text, that changes the color every 2 seconds. 
-Let's add some user interaction. An input field that accepts the the the time period in seconds, and a button that 
-changes it.
+Let's add some user interaction: an input field that accepts the time period in seconds, and a button that sets it.
 
 ```javascript
 class HelloWorld < div {
@@ -419,7 +418,7 @@ class HelloWorld < div {
 In the example above we defined a hierarchy of the `HelloWorld` class. It now has a text as a div, an input, a button 
 and a dif that contains these two.  
 We used special public property, called `value` it defines the value of the elements of type `input`, `select` and 
-`textarea`. See <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#htmlattrdefvalue" target="_blank">value attribute</a>  
+`textarea`. See <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#htmlattrdefvalue" target="_blank">value attribute</a> for reference  
   
 We also set the attribute of the input field. All attributes in nazca are defined with prefix `$`. For example:
 ```javascript
@@ -444,7 +443,7 @@ attributes of the class.
 
 #### Getters and Setters
 The concept of the getters nd setters is used in ES6 and in the old style JS. Sometimes you want the property act as a 
-method. doing some other actions prt of setting the properties. In nazca to declare the getter, you should use `<` 
+method. doing some other actions apart of setting the properties. In nazca to declare the getter, you should use `<` 
 operator at the beginnings, for the setter, use `>`. Let's see another example, where we get and set the variable.
 Please replace the content of the `include.nazca` with this code:
 ```javascript
@@ -469,10 +468,10 @@ class HelloWorld < div {
 ``` 
 
 #### Hierarchy manipulation
-You can predefine the class hierarchy, which than will be transformed into HTML DOM. This is a preferred method, but 
+You can predefine the class hierarchy, which then will be transformed into HTML DOM. This is a preferred method, but 
 sometimes you want to manipulate it on the go. For example you want your class generate children, based on the input 
 parameters. To do it, special property of nazca object is used, called `children`. It has 2 methods - `add(nazcaObject)`
-and `remove()`. Let's change the `include.nzca`:
+and `remove(nazcaObject)`. Let's change the `include.nazca`:
 ```javascript
 class Container < div {
 };
@@ -520,9 +519,10 @@ class HelloWorld < div {
     };
 };
 ```
-While nazca understands inheritance of the DOM element, you can't use it directly in the method code as `new div()`. 
-That's why in the example above we declared new `Container` class which is a simple div element with no style modified.  
-Then the `Hello` class is created - a simple inline-block div with the text "Hello" in it.  
+While nazca interprets the inheritance of the DOM element in for the classes and when you define hierarchy, you can't 
+use it directly in the method code like `new div()`. That's why in the example above we declared new `Container` class 
+which is a simple div element with no style modified. Then the `Hello` class is created - a simple inline-block div with
+the text "Hello" in it.  
 `HelloWorld` class now have a special private `generate()` method. It takes the quantity of the `Hello` objects as an 
 input parameter and add them as children. As defined in the constructor - every 3 seconds the quantity is randomly 
 generated and the children object are removed and added again.
@@ -625,21 +625,23 @@ class HelloWorld < HelloDoggy {
 };
 ```
 As you can see in an example above, we override the `decorate()` function of the child class. It uses parent's function,
- adding some decoration to it. Because `HelloWorld` is the child, the constructor of the parent is called first. The 
- `element` of the class `Div` is added a a child of an object with the text "Hello Doggy". The child class also adds 
- another `Div` to the page with the text "... and the whole world". Old `decorate()` just added underline for it, while 
- the new one uses the functionality of the old one and adds a new functionality - it makes both objects of the chocolate
- color.
+adding some decoration to it. Because `HelloWorld` is the child, the constructor of the parent is called first. The 
+`element` of the class `Div` is added a a child of an object with the text "Hello Doggy". The child class also adds 
+another `Div` to the page with the text "... and the whole world". Old `decorate()` just added underline for it, while 
+the new one uses the functionality of the old one and adds a new functionality - it makes both objects of the chocolate
+color.
  
- #### Data from the server
- Previously you could use a template engine to render server data into the page. It could be Jade (Pug), Mustache or 
- some other engine you get used to. Nazca creates the client-side code and it has no templating abilities.      
- Without a templating the content compiled by nazca is always static. However you may need to pass the data from the 
- server to the page initially. To do this, a special directive used.  
- You should use `*json <name> = <path>;`. It will load the json from the `path` url into the global variable named 
- `name`. The global object has `ready()` function tht accept a callback. Every callback will be called, when the json 
- is loaded.    
- Let's see an example. Create a simple json file available under `www/data.json`: 
+#### Data from the server
+When you are developing the web application you need a way to communicate between your server and a user's browser. 
+You can do it with AJAX, but sometime you need a simple way to generate a static content on the page. Before nazca 
+for this purpose you could use a template engine to render server data into the page. It could be Jade (Pug), Mustache 
+or some other engine you get used to.  
+Nazca creates the static client-side code and it has no templating abilities.      
+However you may need to pass the data from the server to the page initially. To do this, a special directive used.  
+You should use `*json <name> = <path>;`. It will load the json from the `path` url into the global variable named 
+`name`. The global object has `ready()` function that accept a callback. Every callback will be called, when the json 
+is loaded.    
+Let's see an example. Create a simple json file available under `www/data.json`: 
  ```json
 {
   "text": "Hello World",
@@ -675,7 +677,7 @@ directive could be used. As the value you should use an object with the syntax d
 For this example to work, you should download 
 <a href="https://raw.githubusercontent.com/Qinti/nazca/master/grandstander.woff2" download>this font file</a> and put it
 inside your generated `www` folder.  
-<a href="https://github.com/Etcetera-Type-Co/Grandstander/blob/master/OFL.txt" target="_blank">Font license</a>
+(<a href="https://github.com/Etcetera-Type-Co/Grandstander/blob/master/OFL.txt" target="_blank">font file license</a>)
 ```javascript
 *json: serverData = data.json;
 *font-face: {
@@ -701,7 +703,8 @@ class HelloWorld < div {
 One thing inherited from the CSS are the object states, called 
 <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Pseudo-classes" target="_blank">pseudo-classes</a>. In nazca 
 you can have a special proerty of the class, defined with prefix `:`. Compiler will generate a pseudo-class inside your 
-css file. 
+css file. States should be CSS-only objects, which means they could only have CSS properties, no custom properties or 
+methods should used, as the content of your `*font-face` directive is written "as is" in the resulting `*.css` file 
 ```javascript
 class Link < a {
     display: block;
@@ -726,7 +729,7 @@ class HelloWorld < div {
 ```
 
 #### Conclusion note
-Nazca is a very new project that could not reach it's full potential yet. While it covers any HTML generation and you 
+Nazca is a very new project that could not reach it's full potential yet. While it covers all of HTML generation and you 
 could write any JavaScript inside the methods, it still could miss CSS features you need. In this case you can use a 
 little hack with including raw css in your `*.nazca`. 
 ```javascript
@@ -741,4 +744,4 @@ little hack with including raw css in your `*.nazca`.
 };
 ``` 
 It is not recommended to mix raw css and nazca, but in case nazca does not have some feature required by you, please 
-create an issue on github and include your custom CSS like this.
+create an issue on github and while it is going to be implemented, include your custom CSS like this.
