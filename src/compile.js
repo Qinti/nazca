@@ -482,9 +482,11 @@ function getClassCode(className, clss, elementID = null) {
         ['variables', 'methods'].forEach((type) => {
             ['protected', 'public'].forEach((access) => {
                 for (let parent in clss.parents) {
-                    for (let variable in classes_[clss.parents[parent]][type][access]) {
-                        if (variable !== 'constructor') {
-                            body += `var ${variable} = ${access === 'protected' ? '__nazcaThis.__nazcaProtected' : '__nazcaThis'}.${variable};\n`;
+                    if (classes_[clss.parents[parent]]) {
+                        for (let variable in classes_[clss.parents[parent]][type][access]) {
+                            if (variable !== 'constructor') {
+                                body += `var ${variable} = ${access === 'protected' ? '__nazcaThis.__nazcaProtected' : '__nazcaThis'}.${variable};\n`;
+                            }
                         }
                     }
                 }
