@@ -321,8 +321,8 @@ function getJSFromHierarchy(object, local = false, className, parentVariables) {
         if (object.name) {
             return true;
         }
-        // has methods apart from constructor
-        if (Object.keys(object.methods.public).length && (Object.keys(object.methods.public).length !== 1 && object.methods.public.constructor.body)) {
+        // has methods
+        if (Object.keys(object.methods.public).length) {
             return true;
         }
         // has public variables
@@ -527,7 +527,7 @@ function getClassCode(className, clss, elementID = null) {
 
                 if (type === 'variables') {
                     let madeVariable = access === 'private' ? variable : tools.makeVariable(variable);
-                    body += `var ${madeVariable}${value ? ` = ${value}` : ''};\n`;
+                    body += `var ${madeVariable}${value ? ` = ${addQuotes(value)}` : ''};\n`;
                     if (access === 'protected') {
                         afterConstructor += `__nazcaThis.__nazcaProtected.${variable} = ${madeVariable};\n`;
                     } else if (access === 'public') {
@@ -649,28 +649,20 @@ function getClassCode(className, clss, elementID = null) {
     });
 
     if (clss.variables.public.text) {
-        body += `__nazcaThis.text = '${clss.variables.public.text}';\n`;
+        body += `__nazcaThis.text = ${addQuotes(clss.variables.public.text)};\n`;
     }
 
     if (clss.variables.public.value) {
-        body += `__nazcaThis.value = '${clss.variables.public.value}';\n`;
+        body += `__nazcaThis.value = ${addQuotes(clss.variables.public.value)};\n`;
     }
-
-    const reRegex = /^\/.+\/[gmixXsuAJD]*$/;
 
     for (let attr in clss.attributes) {
         let value = clss.attributes[attr];
-        if (!reRegex.test(value) && ['{', '['].includes(value.charAt(0)) && parseInt(value) != value) {
-            value = `'${value.replace(/'/g, `\\'`)}'`;
-        }
-        body += `__nazcaThis['$${attr}'] = ${value};\n`;
+        body += `__nazcaThis['$${attr}'] = ${addQuotes(value)};\n`;
     }
     for (let css in clss.style) {
         let value = clss.style[css];
-        if (!reRegex.test(value) && ['{', '['].includes(value.charAt(0)) && parseInt(value) != value) {
-            value = `'${value.replace(/'/g, `\\'`)}'`;
-        }
-        body += `this['${css}'] = ${value};\n`;
+        body += `__nazcaThis['${css}'] = ${addQuotes(value)};\n`;
     }
 
     if (constructorBody) {
@@ -919,4 +911,13 @@ function isGraphicalClass(clss) {
     let parentsAreGraphical = classes_[clss].parents.map((parent) => isGraphicalClass(parent));
 
     return parentsAreGraphical.some((isGraphical) => isGraphical);
+}
+
+function addQuotes(value) {
+    const reRegex = /^\/.+\/[gmixXsuAJD]*$/;
+    if (!reRegex.test(value) && value.charAt(0) !== '{' && value.charAt(0) !== '[' && value != parseInt(value)) {
+        value = `'${value.replace(/'/g, `\\'`)}'`;
+    }
+    console.log(value);
+    return value;
 }
