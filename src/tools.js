@@ -447,9 +447,9 @@ function parseProperty(content, index) {
         }
 
         value = content.slice(nameEnd, nextColon + 1).trim();
-        if (value[0] !== '/' && value[0] !== '[' && parseInt(value) != value) {
+        /* if (value[0] !== '/' && value[0] !== '[' && parseInt(value) != value) {
             value = `'${value.replace(/'/g, `\\'`)}'`;
-        }
+        } */
         type = 'variable';
         index = nextColon;
     }

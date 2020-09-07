@@ -649,18 +649,28 @@ function getClassCode(className, clss, elementID = null) {
     });
 
     if (clss.variables.public.text) {
-        body += `__nazcaThis.text = ${clss.variables.public.text};\n`;
+        body += `__nazcaThis.text = '${clss.variables.public.text}';\n`;
     }
 
     if (clss.variables.public.value) {
-        body += `__nazcaThis.value = ${clss.variables.public.value};\n`;
+        body += `__nazcaThis.value = '${clss.variables.public.value}';\n`;
     }
 
+    const reRegex = /^\/.+\/[gmixXsuAJD]*$/;
+
     for (let attr in clss.attributes) {
-        body += `__nazcaThis['$${attr}'] = ${clss.attributes[attr]};\n`;
+        let value = clss.attributes[attr];
+        if (!reRegex.test(value) && ['{', '['].includes(value.charAt(0)) && parseInt(value) != value) {
+            value = `'${value.replace(/'/g, `\\'`)}'`;
+        }
+        body += `__nazcaThis['$${attr}'] = ${value};\n`;
     }
     for (let css in clss.style) {
-        body += `this['${css}'] = ${clss.style[css]};\n`;
+        let value = clss.style[css];
+        if (!reRegex.test(value) && ['{', '['].includes(value.charAt(0)) && parseInt(value) != value) {
+            value = `'${value.replace(/'/g, `\\'`)}'`;
+        }
+        body += `this['${css}'] = ${value};\n`;
     }
 
     if (constructorBody) {
@@ -701,9 +711,9 @@ function getHTMLObject(object, indent = 0) {
         let returnValue;
         parent.parents.forEach((clss) => {
             if (htmlTags[clss]) {
-                returnValue = clss;
+                returnValue = returnValue || clss;
             } else if (classes_[clss]) {
-                returnValue = getParentElement(classes_[clss]);
+                returnValue = returnValue || getParentElement(classes_[clss]);
             }
         });
 
@@ -734,21 +744,17 @@ function getHTMLObject(object, indent = 0) {
     html += ` id="${id}"`;
     html += '>\n';
 
-    if (object.variables.public.text) {
-        html += `    ${spaces}${object.variables.public.text}\n`;
+    if (object.variables && object.variables.public && object.variables.public.text) {
+        html += `${nextSpaces}${object.variables.public.text}\n`;
     } else {
         let classes = object.classes.slice().reverse();
         let isSet = false;
         classes.forEach((clss) => {
             if (!isSet && classes_[clss] && classes_[clss].variables.public.text) {
-                html += `    ${spaces}${classes_[clss].variables.public.text}\n`;
+                html += `${nextSpaces}${classes_[clss].variables.public.text}\n`;
                 isSet = true;
             }
         });
-    }
-
-    if (object.variables && object.variables.public && object.variables.public.text) {
-        html += `${nextSpaces}${object.variables.public.text}\n`;
     }
 
     if (object.children) {
