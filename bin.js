@@ -61,7 +61,7 @@ function init() {
 
     let day = currentTime.getDate();
     const dayTermination = ['st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th', 'th', 'th', 'th', 'th', 'th', 'th', 'th',
-        'th', 'th', 'th', 'th', 'st', 'nd', 'rd', , 'th', 'th', 'th', 'th', 'th', 'th', 'th', 'st'];
+        'th', 'th', 'th', 'th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th', 'th', 'st'];
     day = `${day}${dayTermination[day]}`;
     let month = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
         "November", "December"][currentTime.getMonth()];
@@ -93,7 +93,8 @@ function init() {
         "css": "css",   // path to the css folder. All css files will be generated in 'path/css' folder
         "html": ".",    // path to the html folder. All html files will be generated in 'path/html' folder
         "js": "js"     // path to the js folder. All js files will be generated in 'path/js' folder
-    }
+    },
+    "beautify": 0 // -1 - uglify the JS, 0 - do not change, 1 - beautify the JS
 }
 `;
 

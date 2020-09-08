@@ -81,19 +81,18 @@ configLoadPromise.then(async (config) => {
         config.out = 'www';
     }
 
-    if (!config.sources) {
-        /* eslint-disable no-throw-literal */
-        throw {message: '.nazca structure is invalid. Should include "sources" array'};
-    }
-
     if (config.sources || !config.sources.length) {
         for (let name in config.sources) {
             let file = `./${config.sources[name]}`;
-            await compile(file, name, config.out);
+            await compile(file, name, config.out, config.beautify);
         }
     } else {
         /* eslint-disable no-throw-literal */
         throw {message: '.nazca config file should have sources array'};
+    }
+
+    if (!config.beautify) {
+        config.beautify = 0;
     }
 }).catch((err) => {
     console.error(err.message);
@@ -110,7 +109,7 @@ function read(file) {
     });
 }
 
-function compile(file, name, out) {
+function compile(file, name, out, beautify) {
     classes_ = {};
     let content_;
 
@@ -298,12 +297,38 @@ function compile(file, name, out) {
             }
         });
 
-        js_ = `${js_}`;
+        if (beautify === 1) {
+            const beautifyJS = require('js-beautify');
+            js_ = beautifyJS(js_, {indent_size: 4, space_in_empty_paren: true});
+        } else if (beautify === -1) {
+            const uglify = require("uglify-es");
+            js_ = uglify.minify(js_, {
+                mangle: {
+                    toplevel: true,
+                    eval: true
+                },
+                compress: {
+                    sequences: true,
+                    dead_code: true,
+                    conditionals: true,
+                    booleans: true,
+                    unused: true,
+                    if_return: true,
+                    join_vars: true,
+                    drop_console: true,
+                    hoist_funs: true
+                }
+            }).code;
+        } else if (beautify !== 0) {
+            throw {
+                message: `'beautify' should be one of these values [-1;0;1]`
+            }
+        }
 
         fs.writeFile(path_.join(out.path, out.js, `${name}.js`), js_, writeCallback);
         fs.writeFile(path_.join(out.path, out.html, `${name}.html`), html_, writeCallback);
         fs.writeFile(path_.join(out.path, out.css, `${name}.css`), css_, writeCallback);
-    }).then((e) => console.log(`\n${file} compiled successfully`)
+    }).then(() => console.log(`\n${file} compiled ${beautify === 1 ? 'and beautified ' : (beautify === -1 ? 'and uglified ' : '')}successfully`)
     ).catch((e) => {
         let errorLocation;
         console.log(e);
@@ -916,7 +941,6 @@ function isGraphicalClass(clss) {
     }
 
     let parentsAreGraphical = classes_[clss].parents.map((parent) => isGraphicalClass(parent));
-
     return parentsAreGraphical.some((isGraphical) => isGraphical);
 }
 
@@ -925,6 +949,6 @@ function addQuotes(value) {
     if (!reRegex.test(value) && value.charAt(0) !== '{' && value.charAt(0) !== '[' && value != parseInt(value)) {
         value = `'${value.replace(/'/g, `\\'`)}'`;
     }
-    console.log(value);
+
     return value;
 }

@@ -1,11 +1,13 @@
 {
   "name": "nazca",
-  "version": "0.11.5",
+  "version": "0.12.0",
   "description": "A great new way of creating GUI in the web",
   "main": "compile.js",
   "dependencies": {
-    "jshint": "^2.11.1",
-    "node-html-parser": "^1.2.18"
+    "js-beautify": "^1.13.0",
+    "jshint": "^2.12.0",
+    "node-html-parser": "^1.2.20",
+    "uglify-es": "^3.3.9"
   },
   "devDependencies": {},
   "scripts": {

@@ -38,7 +38,8 @@ It will generate a sample .nazca file:
         "css": "css",  
         "html": ".",   
         "js": "js"     
-    }
+    },
+    "beautify": 0
 }
 ```  
 
@@ -53,6 +54,15 @@ are defined by other parameters of this object.
 `css` The sub-folder of the `path`, where to generate CSS files to.  
 `html` The sub-folder of the `path`, where to generate HTML files to.  
 `js` The sub-folder of the `path`, where to generate JS files to.
+
+`beautify` can have these values:
+```javascript
+{
+    "beautify": 1, // means the output JS file should be beautified 
+    "beautify": 0, // means the output JS file should not be post-processed after the generation 
+    "beautify": -1, // means the output JS file should be uglified (compressed, minified) 
+}
+```
 
 The sample .nazca file will generate this structure in your project directory
 ```shell script
