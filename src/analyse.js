@@ -9,7 +9,7 @@ const tools = require('./tools');
 const jsHint = require('jshint').JSHINT;
 let prePath = '';
 
-if (file) {
+if (process.argv.length === 3) {
     analyseFile(`./${file}`);
 }
 

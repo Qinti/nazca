@@ -206,9 +206,16 @@ function compile(file, name, out) {
         let root = parse(html_);
         let head = root.querySelector('head');
         if (!head) {
-            root.appendChild('<head></head>');
+            let html = root.querySelector('html');
+            if (!html) {
+                throw {
+                    message: 'Your hierarchy should have html as a parent node'
+                };
+            }
+            html.appendChild('<head></head>');
+
+            root = parse(root.innerHTML);
             head = root.querySelector('head');
-            root.appendChild(head);
         }
 
         head.appendChild(`<script src="${out.js}/${name}.js" type="application/javascript"></script>`);
