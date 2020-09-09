@@ -124,7 +124,6 @@ function compile(file, name, out, beautify) {
 
     // 1. Find all includes and merge the file into one
     return recursivelyInclude(file).then((content) => {
-        content = content.replace(/''/g, "'");
         tools.buildStrings(content);
         content_ = content;
         // 2. Create a map of classes
@@ -278,9 +277,6 @@ function compile(file, name, out, beautify) {
             js_ += getJSFromHierarchy(child) || '';
         });
 
-        elements_.forEach((element) => {
-            js_ += `${element}.__nazcaElementConstructor();\n`;
-        });
         js_ += `});\n`;
     }).then(() => {
         // 10. Write html, css, js file for each page
@@ -480,12 +476,6 @@ function getClassCode(className, clss, elementID = null) {
     }
 
     body += 'var __nazcaThis = this;\n';
-
-    if (constructorBody && elementID) {
-        body += `__nazcaThis.__nazcaElementConstructor = () => {\n`;
-        body += `${constructorBody}\n`;
-        body += `};\n`;
-    }
 
     let defined = {};
     let childrenNames = {};
@@ -913,7 +903,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
 
 function replaceVariable(content, variableName) {
     tools.buildStrings(content);
-    [variableName, `\\['${variableName}'\\]`, `\\[\`${variableName}\`\\]`, `\\["${variableName}"\\]`].forEach((variable) => {
+    [variableName, `['${variableName}']`, `[\`${variableName}\`]`, `["${variableName}"]`].forEach((variable) => {
         let index = content.indexOfCode(variable);
         if (index < 0) {
             return;
@@ -940,14 +930,23 @@ function isGraphicalClass(clss) {
         return true;
     }
 
+    if (!classes_[clss]) {
+        throw {message: `The class ${clss} is not found. Probably it is not included.`};
+    }
+
     let parentsAreGraphical = classes_[clss].parents.map((parent) => isGraphicalClass(parent));
     return parentsAreGraphical.some((isGraphical) => isGraphical);
 }
 
 function addQuotes(value) {
-    const reRegex = /^\/.+\/[gmixXsuAJD]*$/;
-    if (!reRegex.test(value) && value.charAt(0) !== '{' && value.charAt(0) !== '[' && value != parseInt(value)) {
+    const reRegex = /^\/[^\/]+\/[gmixXsuAJD]*$/;
+
+    if (!reRegex.test(value) && value.charAt(0) !== '{' && value.charAt(0) !== '[' && value != parseInt(value) && value !== 'true' && value !== 'false') {
         value = `'${value.replace(/'/g, `\\'`)}'`;
+    } else if (value === 'true') {
+        value = true;
+    } else if (value === 'false') {
+        value = false;
     }
 
     return value;

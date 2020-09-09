@@ -271,7 +271,7 @@ methods and properties are the entities that are seen from the other classes (li
 <a href="https://en.wikipedia.org/wiki/Access_modifiers" target="_blank">this wikipedia article</a> if you want to know more.
   
 Variable (property) could be public/protected/private as well as it could be of a different type - string, numeric, 
-regex, object, array.
+regex, object, array, boolean.
 ```javascript
 class SomeClass {
     publicString: Some public string;
