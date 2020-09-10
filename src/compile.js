@@ -665,7 +665,7 @@ function getClassCode(className, clss, elementID = null) {
         body += `} else {\n`;
         body += `console.error("Can't remove a child without element")}};\n`;
 
-        body += `__nazcaChildrenObjects.at = (index) => {\n`;
+        body += `__nazcaChildren.at = (index) => {\n`;
         body += `return __nazcaChildrenObjects[index];\n`;
         body += `};\n`;
 
@@ -856,7 +856,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
     let defined = [];
 
     let variables = Object.keys(Object.assign({}, classVariables.css, classVariables.attributes, classVariables.getters,
-        classVariables.setters)).concat(['text', 'value', 'children']);
+        classVariables.setters)).concat(['text', 'value', 'children', 'html']);
 
     for (let except in exceptParameters) {
         variables = variables.filter((value) => value !== exceptParameters[except]);
@@ -931,17 +931,17 @@ function replaceVariable(content, variableName) {
     tools.buildStrings(content);
     [variableName, `['${variableName}']`, `[\`${variableName}\`]`, `["${variableName}"]`].forEach((variable) => {
         let index = content.indexOfCode(variable);
-        if (index < 0) {
-            return;
-        }
+        while (index >= 0) {
+            if (/[a-z.\d]/i.test(content.charAt(index - 1))) {
+                index = content.indexOfCode(variable, index + variable.length);
+                continue;
+            }
 
-        if (/[a-z.\d]/i.test(content.charAt(index - 1))) {
-            return;
+            let point = variable.indexOf('[') === 0 ? '' : '.';
+            let replacement = `__nazcaThis${point}${variable}`;
+            content = `${content.slice(0, index)}${replacement}${content.slice(index + variable.length)}`;
+            index = content.indexOfCode(variable, index + replacement.length);
         }
-
-        let point = variable.indexOf('[') === 0 ? '' : '.';
-        let replacement = `__nazcaThis${point}${variable}`;
-        content = `${content.slice(0, index)}${replacement}${content.slice(index + variable.length)}`;
     });
 
     return content;
