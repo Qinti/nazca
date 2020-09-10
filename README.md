@@ -134,7 +134,10 @@ After compiling it, you'll see an html:
 </html>
 
 ```
-It also generates empty CSS and useless JS files - they do nothing yet.
+It also generates empty CSS and useless JS files - they do nothing yet.  
+
+Note: There also `html` public variable available. It's not recommended to use, but sometimes you may need to insert an 
+HTML code in your element. While `text` modifies `innerText` of the element, `html` modifies `innerHTML`.
 
 #### Styled "Hello world"
 Let's style it a bit. We can just add some css properties to the main div
@@ -508,8 +511,8 @@ class HelloWorld < div {
     };
 
     -generate: (n = 1) {
-        if (container) {
-            children.remove(container);
+        while (children.length) {
+            children.remove(children.at(0));
         }
         if (world) {
             children.remove(world);

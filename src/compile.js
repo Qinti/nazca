@@ -595,6 +595,12 @@ function getClassCode(className, clss, elementID = null) {
         body += `    configurable: true\n`;
         body += `});\n`;
 
+        body += `Object.defineProperty(__nazcaThis, 'html', {\n`;
+        body += `    get: () => __nazcaThis.__nazcaElement.innerHTML,\n`;
+        body += `    set: (value) => {__nazcaThis.__nazcaElement.innerHTML =  value;},\n`;
+        body += `    configurable: true\n`;
+        body += `});\n`;
+
         body += `if (__nazcaThis.__nazcaElement.value !== undefined) {\n`;
         body += `    Object.defineProperty(__nazcaThis, 'value', {\n`;
         body += `        get: () => __nazcaThis.__nazcaElement.value,\n`;
@@ -606,6 +612,10 @@ function getClassCode(className, clss, elementID = null) {
         classes.forEach((cls) => {
             body += `__nazcaThis.__nazcaElement.classList.add('${cls}');\n`;
         });
+
+        if (classes_[className]) {
+            body += `__nazcaThis.__nazcaElement.classList.add('${className}');\n`;
+        }
     }
 
     // Define getters, setters
@@ -639,17 +649,29 @@ function getClassCode(className, clss, elementID = null) {
 
     if (isElementDefined) {
         body += `var __nazcaChildren = {};\n`;
+        body += `var __nazcaChildrenObjects = [];\n`;
+
         body += `__nazcaChildren.add = (object) => {\n`;
         body += `if (object.__nazcaElement) {\n`;
         body += `__nazcaThis.__nazcaElement.appendChild(object.__nazcaElement)\n`;
+        body += `__nazcaChildrenObjects.push(object);\n`;
         body += `} else {\n`;
         body += `console.error("Can't append a child without element")}};\n`;
 
         body += `__nazcaChildren.remove = (object) => {\n`;
         body += `if (object.__nazcaElement) {\n`;
         body += `__nazcaThis.__nazcaElement.removeChild(object.__nazcaElement)\n`;
+        body += `__nazcaChildrenObjects = __nazcaChildrenObjects.filter((obj) => obj !== object);\n`;
         body += `} else {\n`;
         body += `console.error("Can't remove a child without element")}};\n`;
+
+        body += `__nazcaChildrenObjects.at = (index) => {\n`;
+        body += `return __nazcaChildrenObjects[index];\n`;
+        body += `};\n`;
+
+        body += `Object.defineProperty(__nazcaChildren, 'length', {\n`;
+        body += `get: () => __nazcaChildrenObjects.length,\n`;
+        body += `});\n`;
 
         body += `Object.defineProperty(__nazcaThis, 'children', {\n`;
         body += `get: () => __nazcaChildren,\n`;
@@ -672,6 +694,10 @@ function getClassCode(className, clss, elementID = null) {
 
     if (clss.variables.public.text) {
         body += `__nazcaThis.text = ${addQuotes(clss.variables.public.text)};\n`;
+    }
+
+    if (clss.variables.public.html) {
+        body += `__nazcaThis.html = ${addQuotes(clss.variables.public.html)};\n`;
     }
 
     if (clss.variables.public.value) {
@@ -758,14 +784,14 @@ function getHTMLObject(object, indent = 0) {
     html += ` id="${id}"`;
     html += '>\n';
 
-    if (object.variables && object.variables.public && object.variables.public.text) {
-        html += `${nextSpaces}${object.variables.public.text}\n`;
+    if (object.variables && object.variables.public && (object.variables.public.text || object.variables.public.html)) {
+        html += `${nextSpaces}${object.variables.public.text || object.variables.public.html}\n`;
     } else {
         let classes = object.classes.slice().reverse();
         let isSet = false;
         classes.forEach((clss) => {
-            if (!isSet && classes_[clss] && classes_[clss].variables.public.text) {
-                html += `${nextSpaces}${classes_[clss].variables.public.text}\n`;
+            if (!isSet && classes_[clss] && (classes_[clss].variables.public.text || classes_[clss].variables.public.html)) {
+                html += `${nextSpaces}${classes_[clss].variables.public.text || classes_[clss].variables.public.html}\n`;
                 isSet = true;
             }
         });
