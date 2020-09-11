@@ -854,6 +854,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
     // separate function on lines
     let blockIndex = 0;
     let defined = [];
+    let definedGlobally = [];
 
     let variables = Object.keys(Object.assign({}, classVariables.css, classVariables.attributes, classVariables.getters,
         classVariables.setters)).concat(['text', 'value', 'children', 'html']);
@@ -887,30 +888,35 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
                     blockIndex--;
                 }
 
+                defined[blockIndex] = defined[blockIndex - 1] || defined[blockIndex] || {};
                 if (part.indexOfCode('var') >= 0 || part.indexOfCode('const') >= 0 || part.indexOfCode('let') >= 0) {
-                    let variables1 = /\blet\s([a-z\d_$]+)\b/gi.exec(part);
-                    let variables2 = /\b,\s{0,}([a-z\d_$]+)\b/gi.exec(part);
-                    if (variables1) {
-                        variables1.shift()
-                    } else {
-                        variables1 = []
-                    }
-                    if (variables1 && variables2) {
-                        variables2.shift()
-                    } else {
-                        variables2 = []
-                    }
+                    let variables = /\blet\s+([a-z\d_$,\s]+)/i.exec(part) || [];
+                    let constants = /\bconst\s+([a-z\d_$,\s]+)/i.exec(part) || [];
+                    let gVariables = /\bvar\s+([a-z\d_$,\s]+)/i.exec(part) || [];
 
-                    let variables = variables1.concat(variables2);
+                    [variables, constants, gVariables] = [variables, constants, gVariables].map((variables) => {
+                        if (variables.length) {
+                            variables.shift();
+                            variables = variables.map((variable) => variable.split(',').map((variable) => variable.trim()));
+                            return [].concat.apply([], variables);
+                        }
+
+                        return variables;
+                    });
+
                     for (let i = 0; i < variables.length; i++) {
                         let variable = variables[i];
-                        defined[blockIndex] = defined[blockIndex] || {};
                         defined[blockIndex][variable] = 1;
+                    }
+
+                    for (let i = 0; i < constants.concat(gVariables).length; i++) {
+                        let variable = variables[i];
+                        definedGlobally[variable] = 1;
                     }
                 }
 
                 variables.forEach((variable) => {
-                    if (!(defined[blockIndex] && defined[blockIndex][variable]) && part.indexOf(variable) >= 0) {
+                    if (!(defined[blockIndex] && defined[blockIndex][variable]) && !definedGlobally[variable] && part.indexOf(variable) >= 0) {
                         part = replaceVariable(part, variable);
                     }
                 });
@@ -929,6 +935,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
 
 function replaceVariable(content, variableName) {
     tools.buildStrings(content);
+
     [variableName, `['${variableName}']`, `[\`${variableName}\`]`, `["${variableName}"]`].forEach((variable) => {
         let index = content.indexOfCode(variable);
         while (index >= 0) {
