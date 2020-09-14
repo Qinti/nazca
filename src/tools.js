@@ -20,13 +20,17 @@ String.prototype.regexIndexOf = function (regex, startIndex = 0) {
 
 global.stringMap = global.stringMap || {};
 
-function buildStrings(str) {
+function buildStrings(str, inFunctionBody = false) {
     let stringArray = [];
 
     const quoteRegex = /['"/`:]/;
     let closeSymbol, stringOpening, stringClosing;
     let isBlockComment = false;
-    const closeSymbolMap = {':': ';'};
+    const closeSymbolMap = {};
+    if (!inFunctionBody) {
+        closeSymbolMap[':'] = ';'
+    }
+
     ['"', "'", '/', '`'].forEach((symbol) => {
         closeSymbolMap[symbol] = symbol
     });
@@ -65,7 +69,7 @@ function buildStrings(str) {
                 if (closeSymbol === '/' && str.charAt(i + 1) === '*') {
                     isBlockComment = true;
                 }
-                stringOpening = i;
+                stringOpening = i + 1;
             }
         }
     }

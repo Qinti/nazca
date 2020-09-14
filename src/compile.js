@@ -864,7 +864,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
     }
 
     let innerBody = body.slice(1, body.length - 2);
-    tools.buildStrings(innerBody);
+    tools.buildStrings(innerBody, true);
     let lines = innerBody.splitLines();
     lines = lines.map((line) => {
         if (!line.trim()) {
@@ -934,7 +934,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
 }
 
 function replaceVariable(content, variableName) {
-    tools.buildStrings(content);
+    tools.buildStrings(content, true);
 
     [variableName, `['${variableName}']`, `[\`${variableName}\`]`, `["${variableName}"]`].forEach((variable) => {
         let index = content.indexOfCode(variable);
