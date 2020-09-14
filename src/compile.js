@@ -132,15 +132,17 @@ function compile(file, name, out, beautify) {
         // 3. Create a hierarchy of the page
 
         // removing all the classes from the file
-        let classless = content_.slice();
-        let classIndex = classless.indexOfCode('class ');
+        let classless = '';
+        let closingBracket = 0;
+        let classIndex = content_.indexOfCode('class ');
         while (classIndex >= 0) {
-            let openBracket = classless.indexOfCode('{', classIndex);
-            let closingBracket = tools.findClosingBracket(classless, openBracket);
+            classless += content_.slice(closingBracket, classIndex);
+            let openBracket = content_.indexOfCode('{', classIndex);
+            closingBracket = tools.findClosingBracket(content_, openBracket);
             closingBracket += 2;
-            classless = classless.slice(0, classIndex) + classless.slice(closingBracket);
-            classIndex = classless.indexOfCode('class ');
+            classIndex = content_.indexOfCode('class ', classIndex + 1);
         }
+        classless += content_.slice(closingBracket);
 
         hierarchy_ = {children: tools.getChildren(classless)};
     }).then(() => {
@@ -828,7 +830,7 @@ function recursivelyInclude(file) {
             path = path.replace(/'/g, '').trim();
             replacements.push({start, end});
             promises.push(recursivelyInclude(
-                `${prePath}/${path}`
+                path_.join(prePath, path)
             ));
 
             start = fileContent.indexOfCode('*include', end);

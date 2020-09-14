@@ -1,5 +1,5 @@
 /**
- * Analyzer script. Checks if the *.nazca file contains correct code
+ * Analyser script. Checks if the *.nazca file contains correct code
  * @author Q'inti qinti.nazca@gmail.com
  */
 
@@ -39,11 +39,9 @@ function analyseFile(file) {
     });
 }
 
-function analyse(_content) {
+function analyse(_content, _includedFiles = {}) {
     let classMap = {};
     let errors = [];
-
-    // 1.5 . Comment out all line comments
 
     // 2. Validate all includes and comment them out
     let content = _content;
@@ -68,7 +66,11 @@ function analyse(_content) {
 
         let includeContent;
         try {
-            includeContent = fs.readFileSync(`${prePath}/${value}`).toString();
+            if (_includedFiles[value]) {
+                includeContent = _includedFiles[value];
+            } else {
+                includeContent = fs.readFileSync(`${prePath}/${value}`).toString();
+            }
         } catch (e) {
             let [line1, column1] = tools.calculateLineColumn(content, valueStart);
             let [line2, column2] = tools.calculateLineColumn(content, valueEnd);
