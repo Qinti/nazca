@@ -442,11 +442,11 @@ function parseProperty(content, index) {
         }
 
         nameEnd++;
-        while ([`'`, ' '].includes(content.charAt(nameEnd))) {
+        while (content.charAt(nameEnd) === ' ') {
             nameEnd++;
         }
         nextColon--;
-        while ([`'`, ' '].includes(content.charAt(nextColon))) {
+        while (content.charAt(nextColon) === ' ') {
             nextColon--;
         }
 
@@ -486,7 +486,7 @@ function parseProperty(content, index) {
         operatorMap[operator]();
     }
 
-    if (cssProperties[name] === 1) {
+    if (cssProperties[name] === 1 && type !== 'attribute') {
         type = 'css';
     }
 
