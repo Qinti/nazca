@@ -941,7 +941,7 @@ function replaceVariable(content, variableName) {
     [variableName, `['${variableName}']`, `[\`${variableName}\`]`, `["${variableName}"]`].forEach((variable) => {
         let index = content.indexOfCode(variable);
         while (index >= 0) {
-            if (/[a-z.\d]/i.test(content.charAt(index - 1))) {
+            if (/[a-z._$\d]/i.test(content.charAt(index - 1))) {
                 index = content.indexOfCode(variable, index + variable.length);
                 continue;
             }
