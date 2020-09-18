@@ -144,6 +144,8 @@ function compile(file, name, out, beautify) {
         }
         classless += content_.slice(closingBracket);
 
+        tools.buildStrings(classless);
+
         hierarchy_ = {children: tools.getChildren(classless)};
     }).then(() => {
         // 4. Starting generating the html/css/js
@@ -936,7 +938,9 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
 }
 
 function replaceVariable(content, variableName) {
-    tools.buildStrings(content, true);
+    if (!global.stringMap[content]) {
+        tools.buildStrings(content, true);
+    }
 
     [variableName, `['${variableName}']`, `[\`${variableName}\`]`, `["${variableName}"]`].forEach((variable) => {
         let index = content.indexOfCode(variable);

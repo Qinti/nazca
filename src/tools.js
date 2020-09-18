@@ -502,10 +502,10 @@ function getNextChild(content, index = 0) {
     let closingBracket = findClosingBracket(content, openingBracket);
 
     if (openingBracket < 0) {
-        openingBracket = 999;
+        openingBracket = Infinity;
     }
     if (semiColon < 0) {
-        semiColon = 999;
+        semiColon = Infinity;
     }
 
     let declaration = content.slice(index, Math.min(openingBracket, semiColon)).trim();
