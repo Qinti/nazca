@@ -74,6 +74,56 @@ www
   └─ index.html
 ```  
 
+#### Output to folders
+Your html can be generated not only in a single file (`/some-page.html`), but in the `index.html` of a folder 
+(`/some-page/`). To do this, at the end of the source name, you should specify `/`. Let's see an example config file 
+that does the trick.
+```json
+{
+    "sources": {
+        "index": "nazca/index.nazca",
+        "some-page/": "nazca/someSite.nazca",
+        "another-page/": "nazca/anotherPage.nazca",
+        "complex/structure/page/": "nazca/complexStructurePage.nazca"
+    },
+    "out": {
+        "path": "www", 
+        "css": "css",  
+        "html": ".",   
+        "js": "js"     
+    },
+    "beautify": 0
+}
+```
+It will create an `index.html` and put it into `out.path/out.html` folder. It will create sub-folders - 
+`some-page/` and `another-page/` in it, putting `index.html` inside of them. It will also create a folder `complex` with 
+the folder `structure` with the folder `page` and put `index.html` inside it 
+For CSS and JS it will simply create single
+files, like in a previous example.  
+This `.nazca` config will generate this folder structure.
+```shell script
+www
+  ┣─ css
+  │  ┣─ some-page.css
+  │  ┣─ another-page.css
+  │  ┣─ complexfolderstructure.css
+  │  └─ index.css
+  ┣─ js
+  │  ┣─ some-page.js
+  │  ┣─ another-page.js
+  │  ┣─ complexfolderstructure.js
+  │  └─ index.js
+  ┣─ some-page
+  │  └─ index.html
+  ┣─ another-page
+  │  └─ index.html
+  ┣─ complex
+  │  └─ structure
+  │     └─ page
+  │        └─ index.html
+  └─ index.html
+```  
+
 ### Compile
 To compile the nazca code, simply go to a directory, where your `.nazca` file is located and run nazca
 ```shell script

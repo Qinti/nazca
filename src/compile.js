@@ -220,8 +220,10 @@ function compile(file, name, out, beautify) {
             head = root.querySelector('head');
         }
 
-        head.appendChild(`<script src="${out.js}/${name}.js" type="application/javascript"></script>`);
-        head.appendChild(`<link rel="stylesheet" type="text/css" href="${out.css}/${name}.css">`);
+        let fileName = name.replace(/[\/\\]/g, '');
+
+        head.appendChild(`<script src="/${out.js}/${fileName}.js" type="application/javascript"></script>`);
+        head.appendChild(`<link rel="stylesheet" type="text/css" href="/${out.css}/${fileName}.css">`);
 
         html_ = root.innerHTML;
     }).then(() => {
@@ -290,11 +292,20 @@ function compile(file, name, out, beautify) {
             }
         }
 
-        [out.path, path_.join(out.path, out.js), path_.join(out.path, out.html), path_.join(out.path, out.css)].forEach((path) => {
-            try {
-                fs.mkdirSync(path);
-            } catch (e) {
-            }
+        let fileName = name.replace(/[\/\\]/g, '');
+        let htmlName = `${name}.html`;
+        let putInFolder = false;
+        if (/[\/\\]/.test(name)) {
+            htmlName = path_.join(name, 'index.html');
+            putInFolder = true;
+        }
+
+        let foldersForCreation = [path_.join(out.path, out.js), path_.join(out.path, out.html), path_.join(out.path, out.css)];
+        if (putInFolder) {
+            foldersForCreation.push(path_.join(out.path, out.html, name));
+        }
+        foldersForCreation.forEach((path) => {
+            makeDirHierarchy(path);
         });
 
         if (beautify === 1) {
@@ -319,15 +330,17 @@ function compile(file, name, out, beautify) {
                     hoist_funs: true
                 }
             }).code;
-        } else if (beautify !== 0) {
+        } else if (!beautify) {
+            beautify = 0;
+        } else {
             throw {
                 message: `'beautify' should be one of these values [-1;0;1]`
             }
         }
 
-        fs.writeFile(path_.join(out.path, out.js, `${name}.js`), js_, writeCallback);
-        fs.writeFile(path_.join(out.path, out.html, `${name}.html`), html_, writeCallback);
-        fs.writeFile(path_.join(out.path, out.css, `${name}.css`), css_, writeCallback);
+        fs.writeFile(path_.join(out.path, out.js, `${fileName}.js`), js_, writeCallback);
+        fs.writeFile(path_.join(out.path, out.html, htmlName), html_, writeCallback);
+        fs.writeFile(path_.join(out.path, out.css, `${fileName}.css`), css_, writeCallback);
     }).then(() => console.log(`\n${file} compiled ${beautify === 1 ? 'and beautified ' : (beautify === -1 ? 'and uglified ' : '')}successfully`)
     ).catch((e) => {
         let errorLocation;
@@ -989,4 +1002,16 @@ function addQuotes(value) {
     }
 
     return value;
+}
+
+function makeDirHierarchy(path) {
+    let folders = path.split(/[\/\\]/);
+    let currentPath = '';
+    folders.forEach((folder) => {
+        currentPath = path_.join(currentPath, folder);
+        try {
+            fs.mkdirSync(currentPath);
+        } catch (e) {
+        }
+    });
 }
