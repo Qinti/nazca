@@ -450,7 +450,7 @@ function parseProperty(content, index) {
             nextColon--;
         }
 
-        value = content.slice(nameEnd, nextColon + 1).trim();
+        value = content.slice(nameEnd, nextColon + 1).trim().replace(/\\;/g, ';');
         /* if (value[0] !== '/' && value[0] !== '[' && parseInt(value) != value) {
             value = `'${value.replace(/'/g, `\\'`)}'`;
         } */
@@ -509,6 +509,14 @@ function getNextChild(content, index = 0) {
     }
 
     let declaration = content.slice(index, Math.min(openingBracket, semiColon)).trim();
+
+    if (/^\/\//.test(declaration)) {
+        let nextEndLine = content.indexOf('\n', index + 2);
+        return getNextChild(content, nextEndLine + 1);
+    } else if (/^\/\*/.test(declaration)) {
+        let blockCommentEnd = content.indexOf('*/', index + 2);
+        return getNextChild(content, blockCommentEnd + 2);
+    }
 
     let children = [];
     let classes = declaration.split('.');

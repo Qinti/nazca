@@ -698,6 +698,14 @@ function getClassCode(className, clss, elementID = null) {
         // TODO Probably should add some insertion function as well and removal by index
     }
 
+    if (clss.variables.public.text) {
+        body += `__nazcaThis.text = ${addQuotes(clss.variables.public.text)};\n`;
+    }
+
+    if (clss.variables.public.html) {
+        body += `__nazcaThis.html = ${addQuotes(clss.variables.public.html)};\n`;
+    }
+
     clss.children.forEach((child) => {
         let id = tools.nextID();
         let js = getJSFromHierarchy(child, !elementID, id,
@@ -708,14 +716,6 @@ function getClassCode(className, clss, elementID = null) {
             body += `__nazcaThis.children.add(${elementID ? `window.${child.name}` : child.name});\n`;
         }
     });
-
-    if (clss.variables.public.text) {
-        body += `__nazcaThis.text = ${addQuotes(clss.variables.public.text)};\n`;
-    }
-
-    if (clss.variables.public.html) {
-        body += `__nazcaThis.html = ${addQuotes(clss.variables.public.html)};\n`;
-    }
 
     if (clss.variables.public.value) {
         body += `__nazcaThis.value = ${addQuotes(clss.variables.public.value)};\n`;
