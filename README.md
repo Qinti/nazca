@@ -1,14 +1,7 @@
 # nazca
 A new way of creating GUI  
 
-<style>
-img {
-    display: block; 
-    margin: auto;
-}
-</style> 
-
-![Logo](logo/NazcaLogo.png "Nazca")
+<img style="display: block; margin: auto;" src="https://raw.githubusercontent.com/Qinti/nazca/master/logo/NazcaLogo.png" title="Nazca"> 
 
 Nazca is a special GUI language (syntactic sugar over css/html/js), which can 
 define how object looks, how object acts and how it is placed in the hierarchy. 
