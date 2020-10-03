@@ -1,6 +1,8 @@
 # nazca
 A new way of creating GUI  
 
+![Logo](logo/NazcaLogo.png "Nazca")
+
 Nazca is a special GUI language (syntactic sugar over css/html/js), which can 
 define how object looks, how object acts and how it is placed in the hierarchy. 
 There is no need to write separate css/html/js files - one *.nazca file will do 
