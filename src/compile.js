@@ -518,16 +518,18 @@ function getClassCode(className, clss, elementID = null) {
         if (parent && !htmlTags[parent]) {
             /* eslint-disable no-useless-escape */
             let regex = new RegExp(`\^\[['"\`]${parent}\[['"\`]]\s*}\(([a-z\d\s,]+)\);?`, 'gi');
-            if (regex.test(body)) {
-                let parametersString = regex.exec(body)[1];
-                body = body.replace(regex, `${parent}.call(this${parametersString.length ? `, ${parametersString}` : ''});\n`);
-            } else {
-                regex = /\^\s*\(([a-zds,]+)\);?/gi;
+            if (classes_[parent]) {
                 if (regex.test(body)) {
                     let parametersString = regex.exec(body)[1];
-                    body = body.replace(regex, `${parent}.call(this${(parametersString.length ? `, ${parametersString}` : '')};\n`);
+                    body = body.replace(regex, `${parent}.call(this${parametersString.length ? `, ${parametersString}` : ''});\n`);
                 } else {
-                    body += `${parent}.call(this);\n`;
+                    regex = /\^\s*\(([a-zds,]+)\);?/gi;
+                    if (regex.test(body)) {
+                        let parametersString = regex.exec(body)[1];
+                        body = body.replace(regex, `${parent}.call(this${(parametersString.length ? `, ${parametersString}` : '')};\n`);
+                    } else {
+                        body += `${parent}.call(this);\n`;
+                    }
                 }
             }
 
