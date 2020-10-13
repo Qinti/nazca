@@ -17,5 +17,9 @@
   "license": "MIT",
   "bin": {
     "nazca": "bin.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Qinti/nazca.git"
   }
 }
