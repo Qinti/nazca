@@ -43,7 +43,6 @@ function analyse(_content, _includedFiles = {}) {
     let classMap = {};
     let errors = [];
 
-    // 2. Validate all includes and comment them out
     let content = _content;
 
     content = tools.buildStrings(content);

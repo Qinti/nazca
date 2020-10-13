@@ -220,6 +220,7 @@ function compile(file, name, out, beautify) {
             head = root.querySelector('head');
         }
 
+        /* eslint-disable no-useless-escape */
         let fileName = name.replace(/[\/\\]/g, '');
 
         head.appendChild(`<script src="/${out.js}/${fileName}.js" type="application/javascript"></script>`);
@@ -295,6 +296,7 @@ function compile(file, name, out, beautify) {
         let fileName = name.replace(/[\/\\]/g, '');
         let htmlName = `${name}.html`;
         let putInFolder = false;
+        /* eslint-disable no-useless-escape */
         if (/[\/\\]/.test(name)) {
             htmlName = path_.join(name, 'index.html');
             putInFolder = true;
@@ -344,15 +346,34 @@ function compile(file, name, out, beautify) {
     }).then(() => console.log(`\n${file} compiled ${beautify === 1 ? 'and beautified ' : (beautify === -1 ? 'and uglified ' : '')}successfully`)
     ).catch((e) => {
         let errorLocation;
-        console.log(e);
+        let code;
+        let lines = content_.splitLines();
+        let cursor = '';
         if (e.line.length && e.column.length) {
             errorLocation = `${e.line[0]}:${e.column[0]} - ${e.line[1]}:${e.column[1]}`;
+            code = lines.slice(e.line[0] - 1, e.line[1] - 1).join('\n');
         } else if (e.column.length) {
             errorLocation = `${e.line}:${e.column[0]} - ${e.line}:${e.column[1]}`;
+            code = lines[e.line - 1];
+            for (let i = 0; i < e.column[0]; i++) {
+                cursor += ' ';
+            }
+            for (let i = e.column[0]; i < e.column[1]; i++) {
+                cursor += '~';
+            }
         } else {
             errorLocation = `${e.line}:${e.column}`;
+            code = lines[e.line - 1];
+            for (let i = 0; i < e.column; i++) {
+                cursor += ' ';
+            }
+            cursor += '^';
         }
         console.error(`\n[${errorLocation}] ${e.message}`);
+        if (code) {
+            console.error(code);
+            console.error(cursor);
+        }
     });
 }
 
@@ -428,6 +449,16 @@ function getJSFromHierarchy(object, local = false, className, parentVariables) {
     return body;
 }
 
+function extendIfNotSet(object, extend) {
+    Object.keys(extend).forEach((key) => {
+        if (!object[key]) {
+            object[key] = extend[key];
+        }
+    });
+
+    return object;
+}
+
 function getClassCode(className, clss, elementID = null) {
     let constructorParameters = [];
     let constructorBody;
@@ -439,12 +470,33 @@ function getClassCode(className, clss, elementID = null) {
         constructorParameters = clss.methods.public.constructor.parameters;
     }
 
-    let classVariables = {
-        css: Object.assign({}, clss.style),
-        attributes: Object.assign({}, clss.attributes),
-        getters: Object.assign({}, clss.getters),
-        setters: Object.assign({}, clss.setters)
-    };
+    function getParentVariables(_clss, parentVariables = {css: {}, attributes: {}, getters: {}, setters: {}}) {
+        _clss.parents.forEach((parent) => {
+            let currentClass = classes_[parent];
+            if (!currentClass) {
+                return;
+            }
+
+            extendIfNotSet(parentVariables.css, currentClass.style);
+            extendIfNotSet(parentVariables.attributes, currentClass.attributes);
+            extendIfNotSet(parentVariables.getters, currentClass.getters);
+            extendIfNotSet(parentVariables.setters, currentClass.setters);
+
+            if (currentClass.parents.length) {
+                getParentVariables(currentClass, parentVariables);
+            }
+        });
+
+        return parentVariables;
+    }
+
+    let parentVariables = getParentVariables(clss);
+    let classVariables = Object.assign({
+        css: Object.assign(parentVariables.css, clss.style),
+        attributes: Object.assign(parentVariables.attributes, clss.attributes),
+        getters: Object.assign(parentVariables.getters, clss.getters),
+        setters: Object.assign(parentVariables.setters, clss.setters)
+    });
 
     constructorBody = clss.methods.public.constructor.body;
     if (constructorBody) {
