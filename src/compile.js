@@ -723,7 +723,17 @@ function getClassCode(className, clss, elementID = null) {
 
     // Define event listeners
     for (let event in clss.eventHandlers) {
-        body += `__nazcaThis.__nazcaElement.addEventListener('${event}',function (${clss.eventHandlers[event].parameters.join(', ')}) ${replaceVariablesAndFunctions(clss.eventHandlers[event].body, classVariables, clss.eventHandlers[event].parameters)});\n`;
+        body += `__nazcaThis.__nazcaEventListeners = __nazcaThis.__nazcaEventListeners || {};`;
+        body += `__nazcaThis.__nazcaEventListeners['${event}'] = function (${clss.eventHandlers[event].parameters.join(', ')}) ${replaceVariablesAndFunctions(clss.eventHandlers[event].body, classVariables, clss.eventHandlers[event].parameters)};`;
+        body += `__nazcaThis.__nazcaElement.addEventListener('${event}', __nazcaThis.__nazcaEventListeners['${event}']);\n`;
+        body += `Object.defineProperty(__nazcaThis, '@${event}', {\n`;
+        body += `    set: (method) => {\n`;
+        body += `        __nazcaThis.__nazcaElement.removeEventListener('${event}', __nazcaThis.__nazcaEventListeners['${event}']);\n`;
+        body += `        __nazcaThis.__nazcaEventListeners['${event}'] = method;\n`;
+        body += `        __nazcaThis.__nazcaElement.addEventListener('${event}', __nazcaThis.__nazcaEventListeners['${event}']);\n`;
+        body += `    },\n`;
+        body += `    configurable: true\n`;
+        body += `});\n`;
     }
 
     if (isElementDefined) {
@@ -739,7 +749,7 @@ function getClassCode(className, clss, elementID = null) {
 
         body += `__nazcaChildren.remove = (object) => {\n`;
         body += `if (object.__nazcaElement) {\n`;
-        body += `__nazcaThis.__nazcaElement.removeChild(object.__nazcaElement)\n`;
+        body += `__nazcaThis.__nazcaElement.removeChild(object.__nazcaElement);\n`;
         body += `__nazcaChildrenObjects = __nazcaChildrenObjects.filter((obj) => obj !== object);\n`;
         body += `} else {\n`;
         body += `console.error("Can't remove a child without element")}};\n`;
