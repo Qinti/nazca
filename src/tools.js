@@ -683,7 +683,7 @@ function findChildIndex(content, index) {
             } else if (!/[\t\s\n]/i.test(content.charAt(i))) {
                 let [line, column] = calculateLineColumn(content, i);
                 /* eslint-disable no-throw-literal */
-                throw {message: `Unexpected symbol '${content.charAt(i)}'`, line, column};
+                throw {message: `Unexpected symbol '${content.charAt(i)}'`, line, column, index: i};
             }
         }
     }
@@ -710,7 +710,8 @@ function getListOfJSONFiles(content) {
             throw {
                 message: `*json directive is invalid. Should be in format of '*json: objectName=path/to/file.json;'`,
                 line: line1 === line2 ? line1 : [line1, line2],
-                column: [column1, column2]
+                column: [column1, column2],
+                index: valueEnd
             }
         }
 

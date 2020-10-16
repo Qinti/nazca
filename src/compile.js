@@ -11,6 +11,7 @@ let css_ = '';
 let html_ = '';
 let js_ = '';
 let elements_ = [];
+let reductions = [];
 
 /**
  * Nazca compiler. Compiles *.nazca files, described by .nazca in the root directory to the JS/HTML/CSS
@@ -110,6 +111,7 @@ function read(file) {
 }
 
 function compile(file, name, out, beautify) {
+    reductions = [];
     classes_ = {};
     let content_;
 
@@ -347,13 +349,16 @@ function compile(file, name, out, beautify) {
     ).catch((e) => {
         let errorLocation;
         let code;
-        let lines = content_.splitLines();
+        let lines = content_.split('\n');
         let cursor = '';
         if (e.line.length && e.column.length) {
-            errorLocation = `${e.line[0]}:${e.column[0]} - ${e.line[1]}:${e.column[1]}`;
-            code = lines.slice(e.line[0] - 1, e.line[1] - 1).join('\n');
+            let line1 = e.line[0] - reductions[e.line[0] - 1] - 1;
+            let line2 = e.line[1] - reductions[e.line[1] - 1] - 1;
+            errorLocation = `${line1}:${e.column[0]} - ${line2}:${e.column[1]}`;
+            code = lines.slice(e.line[0] + 1, e.line[1] - 1).join('\n');
         } else if (e.column.length) {
-            errorLocation = `${e.line}:${e.column[0]} - ${e.line}:${e.column[1]}`;
+            let line = e.line - reductions[e.line - 1] - 1;
+            errorLocation = `${line}:${e.column[0]} - ${line}:${e.column[1]}`;
             code = lines[e.line - 1];
             for (let i = 0; i < e.column[0]; i++) {
                 cursor += ' ';
@@ -362,17 +367,20 @@ function compile(file, name, out, beautify) {
                 cursor += '~';
             }
         } else {
-            errorLocation = `${e.line}:${e.column}`;
-            code = lines[e.line - 1];
-            for (let i = 0; i < e.column; i++) {
+            let line = e.line - reductions[e.line - 1] + 1;
+            errorLocation = `${line}:${e.column}`;
+            code = lines[e.line];
+            for (let i = 0; i < e.column - 1; i++) {
                 cursor += ' ';
             }
             cursor += '^';
         }
-        console.error(`\n[${errorLocation}] ${e.message}`);
+
+        console.error('\x1b[31m%s\x1b[0m', `\nError: ${file}:`);
+        console.error('\x1b[31m%s\x1b[0m', `[${errorLocation}] ${e.message}`);
         if (code) {
-            console.error(code);
-            console.error(cursor);
+            console.error('\x1b[31m%s\x1b[0m', code);
+            console.error('\x1b[31m%s\x1b[0m', cursor);
         }
     });
 }
@@ -906,8 +914,23 @@ function recursivelyInclude(file) {
         }
 
         return Promise.all(promises).then((contents) => {
+            let lastReduction = 0;
             for (let i = contents.length - 1; i >= 0; i--) {
+                let [line] = tools.calculateLineColumn(fileContent, replacements[i].start);
                 fileContent = fileContent.slice(0, replacements[i].start) + contents[i] + fileContent.slice(replacements[i].end + 1);
+                let includeLinesCount = contents[i].split('\n').length;
+                line += includeLinesCount;
+                lastReduction = lastReduction + includeLinesCount - 1;
+                reductions[line] = lastReduction;
+            }
+
+            lastReduction = 0;
+            for (let i = 0; i < fileContent.length; i++) {
+                if (!reductions[i]) {
+                    reductions[i] = lastReduction;
+                } else {
+                    lastReduction = reductions[i]
+                }
             }
 
             return fileContent;
