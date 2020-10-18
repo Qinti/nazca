@@ -10,7 +10,7 @@ const cssProperties = require('./cssProperties');
 const reObject = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}{/i;
 const reVariable = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}.{0,};/i;
 const reMethod = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}\([a-z_\d,\s=]{0,}\)\s{0,}{/i;
-const reChild = /^{?[\s\n]{0,}[.a-z][a-z\d.]+\s{0,}({|;)/i;
+const reChild = /^{?[\s\n]{0,}[.a-z][a-z\d.\-_]+\s{0,}({|;)/i;
 
 /* eslint-disable no-extend-native */
 String.prototype.regexIndexOf = function (regex, startIndex = 0) {

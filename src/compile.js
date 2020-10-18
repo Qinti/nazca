@@ -352,8 +352,8 @@ function compile(file, name, out, beautify) {
         let lines = content_.split('\n');
         let cursor = '';
         if (e.line.length && e.column.length) {
-            let line1 = e.line[0] - reductions[e.line[0] - 1] - 1;
-            let line2 = e.line[1] - reductions[e.line[1] - 1] - 1;
+            let line1 = e.line[0] - reductions[e.line[0] - 1] + 1;
+            let line2 = e.line[1] - reductions[e.line[1] - 1] + 1;
             errorLocation = `${line1}:${e.column[0]} - ${line2}:${e.column[1]}`;
             code = lines.slice(e.line[0] + 1, e.line[1] - 1).join('\n');
         } else if (e.column.length) {
