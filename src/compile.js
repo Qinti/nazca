@@ -12,6 +12,7 @@ let html_ = '';
 let js_ = '';
 let elements_ = [];
 let reductions = [];
+let content_;
 
 /**
  * Nazca compiler. Compiles *.nazca files, described by .nazca in the root directory to the JS/HTML/CSS
@@ -113,7 +114,6 @@ function read(file) {
 function compile(file, name, out, beautify) {
     reductions = [];
     classes_ = {};
-    let content_;
 
     classes_ = {};
     hierarchy_ = {children: []};
@@ -351,6 +351,11 @@ function compile(file, name, out, beautify) {
         let code;
         let lines = content_.split('\n');
         let cursor = '';
+
+        if (!e.line) {
+            return console.error('\x1b[31m%s\x1b[0m', e);
+        }
+
         if (e.line.length && e.column.length) {
             let line1 = e.line[0] - reductions[e.line[0] - 1] + 1;
             let line2 = e.line[1] - reductions[e.line[1] - 1] + 1;
@@ -580,18 +585,21 @@ function getClassCode(className, clss, elementID = null) {
 
     // Define public and protected parent variables as local variables
     if (classes.length) {
-        ['variables', 'methods'].forEach((type) => {
-            ['protected', 'public'].forEach((access) => {
-                for (let parent in clss.parents) {
-                    if (classes_[clss.parents[parent]]) {
-                        for (let variable in classes_[clss.parents[parent]][type][access]) {
-                            if (variable !== 'constructor') {
-                                body += `var ${variable} = ${access === 'protected' ? '__nazcaThis.__nazcaProtected' : '__nazcaThis'}.${variable};\n`;
-                            }
-                        }
-                    }
-                }
-            });
+        clss.parents.forEach((parent) => {
+            if (classes_[parent]) {
+                let protectedVariables = Object.keys(classes_[parent].variables.protected)
+                    .concat(Object.keys(classes_[parent].methods.protected))
+                    .concat(classes_[parent].children
+                        .map((child) => child.name)
+                    ).filter((value) => !!value);
+
+                let publicVariables = Object.keys(classes_[parent].variables.public)
+                    .concat(Object.keys(classes_[parent].methods.public))
+                    .filter((value) => !!value && value !== 'constructor');
+
+                body += `var {${protectedVariables.join(', ')}} = __nazcaThis.__nazcaProtected;\n`;
+                body += `var {${publicVariables.join(', ')}} = __nazcaThis;\n`;
+            }
         });
     }
 
@@ -1045,7 +1053,7 @@ function replaceVariable(content, variableName) {
     [variableName, `['${variableName}']`, `[\`${variableName}\`]`, `["${variableName}"]`].forEach((variable) => {
         let index = content.indexOfCode(variable);
         while (index >= 0) {
-            if (/[a-z._$\d]/i.test(content.charAt(index - 1))) {
+            if (/[a-z._$\d]/i.test(content.charAt(index - 1)) || /[a-z_$\d]/i.test(content.charAt(index + variable.length))) {
                 index = content.indexOfCode(variable, index + variable.length);
                 continue;
             }

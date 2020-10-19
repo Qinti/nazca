@@ -319,6 +319,11 @@ function getClassMap(content, startIndex) {
                 eventHandler: 'eventHandlers',
                 state: 'states'
             };
+            if (property.type === 'css' && typeof property.value !== 'string') {
+                /* eslint-disable no-throw-literal */
+                throw `CSS property '${property.name}' can not be overridden`;
+            }
+
             if (property.type === 'variable' || property.type === 'method') {
                 classMap[className][typeMap[property.type]][property.access][property.name] = property.value;
             } else if (property.type !== 'child') {
@@ -568,6 +573,11 @@ function getNextChild(content, index = 0) {
                 eventHandler: 'eventHandlers',
                 state: 'states'
             };
+            if (property.type === 'css' && typeof property.value !== 'string') {
+                /* eslint-disable no-throw-literal */
+                throw `CSS property '${property.name}' can not be overridden`;
+            }
+
             if (property.type === 'variable' || property.type === 'method') {
                 properties[typeMap[property.type]][property.access][property.name] = property.value;
             } else {
