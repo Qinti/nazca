@@ -6,3 +6,4 @@ eslint --fix src/compile.js
 eslint --fix src/cssProperties.js
 eslint --fix src/htmlTags.js
 eslint --fix src/tools.js
+eslint --fix bin.js

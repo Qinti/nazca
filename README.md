@@ -141,6 +141,13 @@ outputs you the list of classes, hierarchy and the list of errors (if any).
 ```shell script
 nazca analyse /your/file.nazca 
 ```
+
+### Watch
+You can set the compiler to continuously compile files in your .nazca config as soon as you modify them. To do this, you
+should call this simple command
+```shell script
+nazca watch 
+```
   
 ### Tutorial
 
@@ -507,6 +514,27 @@ See <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element#Events" ta
 
 All children in the hierarchy act in the scope of the main class and have access to the private/protected/public 
 attributes of the class.
+
+Nazca creates setter for the event handler as soon as it sees it in the code. If you assign to it, it will remove old 
+event handler and assign the new one. 
+```javascript
+class SomeClass < div {
+    constructor: () {
+        setTimeout(() => {
+            button['@click'] = () => {
+                console.log('Too late. Behavior is changed');
+            }
+        }, 10000);
+    };
+
+    button.button {
+        text: click me;
+        @click: () {
+            console.log('You have 10 seconds before the behavior change');
+        };
+    };
+};
+```
 
 #### Getters and Setters
 The concept of the getters nd setters is used in ES6 and in the old style JS. Sometimes you want the property act as a 

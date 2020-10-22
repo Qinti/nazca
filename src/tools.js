@@ -736,6 +736,26 @@ function makeVariable(str) {
     return `${str.replace(/[^a-z\d_$]/ig, '_')}`;
 }
 
+function flattenNazcaConfig(content) {
+    let index = 0;
+    [
+        {openSymbol: '/*', closeSymbol: '*/'},
+        {openSymbol: '//', closeSymbol: '\n', replacement: '\n'}
+    ].forEach(({openSymbol, closeSymbol, replacement}) => {
+        index = 0;
+        while (index >= 0) {
+            index = content.indexOf(openSymbol);
+
+            if (index >= 0) {
+                let close = content.indexOf(closeSymbol, index + openSymbol.length);
+                content = `${content.slice(0, index)}${replacement || ''}${content.slice(close + closeSymbol.length)}`;
+            }
+        }
+    });
+
+    return content;
+}
+
 module.exports = {
     buildStrings,
     findClosingBracket,
@@ -745,5 +765,6 @@ module.exports = {
     getChildren,
     resetID,
     getListOfJSONFiles,
-    makeVariable
+    makeVariable,
+    flattenNazcaConfig
 };

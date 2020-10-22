@@ -5,12 +5,36 @@
  */
 
 const fs = require('fs');
+const compile = require('./src/compile');
 
 if (process.argv.length < 3) {
-    require('./src/compile');
-} else if (process.argv.length === 3 && ['init', 'help'].includes(process.argv[2])) {
+    compile();
+} else if (process.argv.length === 3 && ['init', 'help', 'watch'].includes(process.argv[2])) {
     if (process.argv[2] === 'init') {
         init();
+    } else if (process.argv[2] === 'watch') {
+        const tools = require('./src/tools');
+        console.log('Watching the files:');
+        fs.readFile('.nazca', (err, content) => {
+            if (err) {
+                return console.error('No .nazca file is found');
+            }
+
+            content = tools.flattenNazcaConfig(content.toString());
+
+            let sources = JSON.parse(content).sources;
+            let sourceFiles = Object.keys(sources).map((key) => sources[key]);
+
+            sourceFiles.forEach((file) => {
+                console.log(file);
+                fs.watchFile(file, () => {
+                    console.log(`${file} is changed. Recompiling...`);
+                    compile();
+                });
+            });
+
+            compile();
+        });
     } else if (process.argv[2] === 'help') {
         help();
     }
@@ -46,7 +70,13 @@ function help() {
     console.log('│> nazca init                                                │');
     console.log('└────────────────────────────────────────────────────────────┘');
     console.log();
-    console.log('4. Show the usage info');
+    console.log('4. Watch the files and compile the project if any file in .nazca config changes');
+    console.log('┌────────────────────────────────────────────────────────────┐');
+    console.log('│> cd /folder/where/you/want/to/init/the/project             │');
+    console.log('│> nazca watch                                               │');
+    console.log('└────────────────────────────────────────────────────────────┘');
+    console.log();
+    console.log('5. Show the usage info');
     console.log('┌────────────────────────────────────────────────────────────┐');
     console.log('│> nazca help                                                │');
     console.log('└────────────────────────────────────────────────────────────┘');

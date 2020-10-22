@@ -50,22 +50,7 @@ let configLoadPromise = new Promise((resolve, reject) => {
             }
 
             let config;
-            let index = 0;
-            content = content.toString();
-            [
-                {openSymbol: '/*', closeSymbol: '*/'},
-                {openSymbol: '//', closeSymbol: '\n', replacement: '\n'}
-            ].forEach(({openSymbol, closeSymbol, replacement}) => {
-                index = 0;
-                while (index >= 0) {
-                    index = content.indexOf(openSymbol);
-
-                    if (index >= 0) {
-                        let close = content.indexOf(closeSymbol, index + openSymbol.length);
-                        content = `${content.slice(0, index)}${replacement || ''}${content.slice(close + closeSymbol.length)}`;
-                    }
-                }
-            });
+            content = tools.flattenNazcaConfig(content.toString());
 
             try {
                 config = JSON.parse(content.toString().replace(/\/\/.*\n|\/\*(.|\n)*\*\//g, ''));
@@ -78,27 +63,29 @@ let configLoadPromise = new Promise((resolve, reject) => {
     });
 });
 
-configLoadPromise.then(async (config) => {
-    if (!config.out) {
-        config.out = 'www';
-    }
-
-    if (config.sources || !config.sources.length) {
-        for (let name in config.sources) {
-            let file = `./${config.sources[name]}`;
-            await compile(file, name, config.out, config.beautify);
+function compileAll() {
+    configLoadPromise.then(async (config) => {
+        if (!config.out) {
+            config.out = 'www';
         }
-    } else {
-        /* eslint-disable no-throw-literal */
-        throw {message: '.nazca config file should have sources array'};
-    }
 
-    if (!config.beautify) {
-        config.beautify = 0;
-    }
-}).catch((err) => {
-    console.error(err.message);
-});
+        if (!config.beautify) {
+            config.beautify = 0;
+        }
+
+        if (config.sources || !config.sources.length) {
+            for (let name in config.sources) {
+                let file = `./${config.sources[name]}`;
+                await compile(file, name, config.out, config.beautify);
+            }
+        } else {
+            /* eslint-disable no-throw-literal */
+            throw {message: '.nazca config file should have sources array'};
+        }
+    }).catch((err) => {
+        console.error(err.message);
+    });
+}
 
 function read(file) {
     return new Promise((resolve, reject) => {
@@ -1109,4 +1096,10 @@ function makeDirHierarchy(path) {
         } catch (e) {
         }
     });
+}
+
+module.exports = compileAll;
+
+if (process.argv.length === 2 && /compile\.js$/.test(process.argv[1])) {
+    compileAll();
 }
