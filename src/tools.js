@@ -6,6 +6,7 @@
 let idCounter = 1;
 const alphabet = '_abcdefghijklmnopqrstuvwxyz';
 const cssProperties = require('./cssProperties');
+const reservedWords = require('./reservedWords');
 
 const reObject = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}{/i;
 const reVariable = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}.{0,};/i;
@@ -214,8 +215,12 @@ function nextID() {
         id += alphabet[next || 1];
         counter = Math.floor(counter / n);
     }
-
-    return id.split("").reverse().join("");
+    let returnValue = id.split("").reverse().join("");
+    // Sequentially generated IDs could be reserved words
+    if (reservedWords[returnValue]) {
+        return nextID();
+    }
+    return returnValue;
 }
 
 function calculateLineColumn(content, position) {

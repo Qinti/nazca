@@ -470,7 +470,7 @@ function getClassCode(className, clss, elementID = null) {
         constructorParameters = clss.methods.public.constructor.parameters;
     }
 
-    function getParentVariables(_clss, parentVariables = {css: {}, attributes: {}, getters: {}, setters: {}}) {
+    function getParentVariables(_clss, parentVariables = {css: {}, attributes: {}, getters: {}, setters: {}, eventHandlers: {}}) {
         _clss.parents.forEach((parent) => {
             let currentClass = classes_[parent];
             if (!currentClass) {
@@ -481,6 +481,7 @@ function getClassCode(className, clss, elementID = null) {
             extendIfNotSet(parentVariables.attributes, currentClass.attributes);
             extendIfNotSet(parentVariables.getters, currentClass.getters);
             extendIfNotSet(parentVariables.setters, currentClass.setters);
+            extendIfNotSet(parentVariables.eventHandlers, currentClass.eventHandlers);
 
             if (currentClass.parents.length) {
                 getParentVariables(currentClass, parentVariables);
@@ -495,8 +496,19 @@ function getClassCode(className, clss, elementID = null) {
         css: Object.assign(parentVariables.css, clss.style),
         attributes: Object.assign(parentVariables.attributes, clss.attributes),
         getters: Object.assign(parentVariables.getters, clss.getters),
-        setters: Object.assign(parentVariables.setters, clss.setters)
+        setters: Object.assign(parentVariables.setters, clss.setters),
+        eventHandlers: Object.assign(parentVariables.eventHandlers, clss.eventHandlers)
     });
+
+    for (let key in classVariables.attributes) {
+        classVariables.attributes[`$${key}`] = classVariables.attributes[key];
+        delete classVariables.attributes[key];
+    }
+
+    for (let key in classVariables.eventHandlers) {
+        classVariables.eventHandlers[`@${key}`] = classVariables.eventHandlers[key];
+        delete classVariables.eventHandlers[key];
+    }
 
     constructorBody = clss.methods.public.constructor.body;
     if (constructorBody) {
@@ -956,7 +968,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
     let definedGlobally = [];
 
     let variables = Object.keys(Object.assign({}, classVariables.css, classVariables.attributes, classVariables.getters,
-        classVariables.setters)).concat(['text', 'value', 'children', 'html']);
+        classVariables.setters, classVariables.eventHandlers)).concat(['text', 'value', 'children', 'html']);
 
     for (let except in exceptParameters) {
         variables = variables.filter((value) => value !== exceptParameters[except]);
