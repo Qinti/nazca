@@ -697,7 +697,7 @@ function getClassCode(className, clss, elementID = null) {
     for (let key in clss.getters) {
         body += `Object.defineProperty(__nazcaThis, '${key}', {\n`;
         body += `    get: () => ${replaceVariablesAndFunctions(clss.getters[key].body, classVariables, clss.getters[key].parameters)},\n`;
-        if (clss.setters) {
+        if (clss.setters[key]) {
             body += `set: (${clss.setters[key].parameters.join(', ')}) => ${replaceVariablesAndFunctions(clss.setters[key].body, classVariables, clss.setters[key].parameters)},\n`;
         }
         body += `configurable: true\n`;
@@ -1040,7 +1040,7 @@ function replaceVariable(content, variableName) {
     [variableName, `['${variableName}']`, `[\`${variableName}\`]`, `["${variableName}"]`].forEach((variable) => {
         let index = content.indexOfCode(variable);
         while (index >= 0) {
-            if (/[a-z._$\d]/i.test(content.charAt(index - 1)) || /[a-z_$\d]/i.test(content.charAt(index + variable.length))) {
+            if (/[a-z._$\d]/i.test(content.charAt(index - 1)) || /[a-z_$:\d]/i.test(content.charAt(index + variable.length))) {
                 index = content.indexOfCode(variable, index + variable.length);
                 continue;
             }
