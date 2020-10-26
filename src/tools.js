@@ -7,6 +7,8 @@ let idCounter = 1;
 const alphabet = '_abcdefghijklmnopqrstuvwxyz';
 const cssProperties = require('./cssProperties');
 const reservedWords = require('./reservedWords');
+const joinPath = require('path').join;
+const fs = require('fs');
 
 const reObject = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}{/i;
 const reVariable = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}.{0,};/i;
@@ -761,6 +763,31 @@ function flattenNazcaConfig(content) {
     return content;
 }
 
+function findIncludesRecursively(file) {
+    let prePath = file.split(/\/|\\/);
+    prePath.pop();
+    prePath = prePath.join('/');
+
+    let fileContent = fs.readFileSync(file);
+    const reInclude = /\*include:\s{1,}([^<>:"|?*]+);/gi;
+    let returnArray = reInclude.exec(fileContent.toString());
+    if (returnArray) {
+        returnArray.shift();
+    } else {
+        returnArray = [];
+    }
+
+    returnArray = returnArray.map((file) => {
+        return joinPath(prePath, file).replace(/\\/g, '/');
+    });
+
+    returnArray.forEach((file) => {
+        returnArray = returnArray.concat(findIncludesRecursively(file));
+    });
+
+    return returnArray;
+}
+
 module.exports = {
     buildStrings,
     findClosingBracket,
@@ -771,5 +798,6 @@ module.exports = {
     resetID,
     getListOfJSONFiles,
     makeVariable,
-    flattenNazcaConfig
+    flattenNazcaConfig,
+    findIncludesRecursively
 };

@@ -823,8 +823,59 @@ class HelloWorld < div {
 };
 ```
 
+#### Custom events
+You can trigger a custom event in nazca. All nazca objects have `trigger()` function for that. Let's create a div that 
+changes it's color by triggering the `"color" event.
+```javascript
+class Colorful < div {
+    background-color: initial;
+    width: 100px;
+    height: 100px;
+
+    constructor: () {
+        setTimeout(() => {
+            let event = new Event('color');
+            event.color = 'violet';
+            trigger(event);
+        }, 3000);
+    };
+
+    @color: (e) {
+        ['background-color'] = e.color; 
+    };
+};
+
+.html {
+    .body {
+        .Colorful;
+    };
+};
+``` 
+
+Input parameter for `trigger()` function could be instance of an Event or s string, indicating the error type. Since in 
+an example above the color never changes, it can be simplified by providing only an event type to the `trigger()`.
+```javascript
+class Colorful < div {
+    background-color: initial;
+
+    constructor: () {
+        setTimeout(() => trigger('color'), 3000);
+    };
+
+    @color: () {
+        ['background-color'] = 'violet'; 
+    };
+};
+
+.html {
+    .body {
+        .Colorful;
+    };
+};
+```
+
 #### Conclusion note
-Nazca is a very new project that could not reach it's full potential yet. While it covers all of HTML generation and you 
+Nazca is a new project that could not reach it's full potential yet. While it covers all of HTML generation and you 
 could write any JavaScript inside the methods, it still could miss CSS features you need. In this case you can use a 
 little hack with including raw css in your `*.nazca`. 
 ```javascript
@@ -838,5 +889,5 @@ little hack with including raw css in your `*.nazca`.
     };
 };
 ``` 
-It is not recommended to mix raw css and nazca, but in case nazca does not have some feature required by you, please 
+It is not recommended to mix raw css and nazca, but in case nazca does not have some feature you require, please 
 create an issue on github and while it is going to be implemented, include your custom CSS like this.

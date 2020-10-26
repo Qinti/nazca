@@ -25,7 +25,17 @@ if (process.argv.length < 3) {
             let sources = JSON.parse(content).sources;
             let sourceFiles = Object.keys(sources).map((key) => sources[key]);
 
+            let filesToWatch = [];
             sourceFiles.forEach((file) => {
+                filesToWatch.push(file);
+                filesToWatch = filesToWatch.concat(tools.findIncludesRecursively(file));
+            });
+
+            filesToWatch = filesToWatch.filter((value, index, self) => {
+                return self.indexOf(value) === index;
+            });
+
+            filesToWatch.forEach((file) => {
                 console.log(file);
                 fs.watchFile(file, () => {
                     console.log(`${file} is changed. Recompiling...`);

@@ -756,10 +756,12 @@ function getClassCode(className, clss, elementID = null) {
 
         body += `__nazcaChildren.remove = (object) => {\n`;
         body += `if (object.__nazcaElement) {\n`;
+        body += `try {\n`;
         body += `__nazcaThis.__nazcaElement.removeChild(object.__nazcaElement);\n`;
+        body += `} catch (e) {}\n`;
         body += `__nazcaChildrenObjects = __nazcaChildrenObjects.filter((obj) => obj !== object);\n`;
         body += `} else {\n`;
-        body += `console.error("Can't remove a child without element")}};\n`;
+        body += `console.error("Can't remove a child without element");}};\n`;
 
         body += `__nazcaChildren.at = (index) => {\n`;
         body += `return __nazcaChildrenObjects[index];\n`;
@@ -774,7 +776,12 @@ function getClassCode(className, clss, elementID = null) {
         body += `configurable: true\n`;
         body += `});\n`;
 
-        // TODO Probably should add some insertion function as well and removal by index
+        body += `__nazcaThis.trigger = (event) => {\n`;
+        body += `if (typeof event === 'string') {\n`;
+        body += `event = new Event(event);\n`;
+        body += `}\n`;
+        body += `__nazcaThis.__nazcaElement.dispatchEvent(event);\n`;
+        body += `}`;
     }
 
     if (clss.variables.public.text) {
@@ -968,7 +975,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
     let definedGlobally = [];
 
     let variables = Object.keys(Object.assign({}, classVariables.css, classVariables.attributes, classVariables.getters,
-        classVariables.setters, classVariables.eventHandlers)).concat(['text', 'value', 'children', 'html']);
+        classVariables.setters, classVariables.eventHandlers)).concat(['text', 'value', 'children', 'html', 'trigger']);
 
     for (let except in exceptParameters) {
         variables = variables.filter((value) => value !== exceptParameters[except]);
