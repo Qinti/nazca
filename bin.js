@@ -5,7 +5,8 @@
  */
 
 const fs = require('fs');
-const compile = require('./src/compile');
+const compile = require('./src/compile').compileAll;
+const compileFile = require('./src/compile').compile;
 
 if (process.argv.length < 3) {
     compile();
@@ -14,6 +15,8 @@ if (process.argv.length < 3) {
         init();
     } else if (process.argv[2] === 'watch') {
         const tools = require('./src/tools');
+        let includes = {};
+        let reverseNames = {};
         console.log('Watching the files:');
         fs.readFile('.nazca', (err, content) => {
             if (err) {
@@ -22,14 +25,29 @@ if (process.argv.length < 3) {
 
             content = tools.flattenNazcaConfig(content.toString());
 
-            let sources = JSON.parse(content).sources;
+            let config = JSON.parse(content);
+            let sources = config.sources;
             let sourceFiles = Object.keys(sources).map((key) => sources[key]);
+
+            for (let source in sources) {
+                reverseNames[sources[source]] = source;
+            }
 
             let filesToWatch = [];
             sourceFiles.forEach((file) => {
                 filesToWatch.push(file);
-                filesToWatch = filesToWatch.concat(tools.findIncludesRecursively(file));
+                let includedFiles = tools.findIncludesRecursively(file);
+                filesToWatch = filesToWatch.concat(includedFiles);
+
+                includedFiles.forEach((iFile) => {
+                    includes[iFile] = includes[iFile] || [];
+                    includes[iFile].push(file);
+                });
             });
+
+            for (let key in includes) {
+                includes[key] = includes[key].filter((value, index, self) => self.indexOf(value) === index);
+            }
 
             filesToWatch = filesToWatch.filter((value, index, self) => {
                 return self.indexOf(value) === index;
@@ -39,10 +57,15 @@ if (process.argv.length < 3) {
                 console.log(file);
                 fs.watchFile(file, () => {
                     console.log(`${file} is changed. Recompiling...`);
-                    compile();
+                    if (includes[file]) {
+                        includes[file].forEach((file) => compileFile(file, reverseNames[file], config.out, config.beautify));
+                    } else {
+                        compileFile(file, reverseNames[file], config.out, config.beautify);
+                    }
                 });
             });
 
+            console.log();
             compile();
         });
     } else if (process.argv[2] === 'help') {

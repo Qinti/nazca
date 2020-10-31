@@ -332,7 +332,7 @@ function compile(file, name, out, beautify) {
         fs.writeFile(path_.join(out.path, out.js, `${fileName}.js`), js_, writeCallback);
         fs.writeFile(path_.join(out.path, out.html, htmlName), html_, writeCallback);
         fs.writeFile(path_.join(out.path, out.css, `${fileName}.css`), css_, writeCallback);
-    }).then(() => console.log(`\n${file} compiled ${beautify === 1 ? 'and beautified ' : (beautify === -1 ? 'and uglified ' : '')}successfully`)
+    }).then(() => console.log(`${file} compiled ${beautify === 1 ? 'and beautified ' : (beautify === -1 ? 'and uglified ' : '')}successfully`)
     ).catch((e) => {
         let errorLocation;
         let code;
@@ -470,7 +470,13 @@ function getClassCode(className, clss, elementID = null) {
         constructorParameters = clss.methods.public.constructor.parameters;
     }
 
-    function getParentVariables(_clss, parentVariables = {css: {}, attributes: {}, getters: {}, setters: {}, eventHandlers: {}}) {
+    function getParentVariables(_clss, parentVariables = {
+        css: {},
+        attributes: {},
+        getters: {},
+        setters: {},
+        eventHandlers: {}
+    }) {
         _clss.parents.forEach((parent) => {
             let currentClass = classes_[parent];
             if (!currentClass) {
@@ -1117,7 +1123,7 @@ function makeDirHierarchy(path) {
     });
 }
 
-module.exports = compileAll;
+module.exports = {compileAll, compile};
 
 if (process.argv.length === 2 && /compile\.js$/.test(process.argv[1])) {
     compileAll();

@@ -12,7 +12,7 @@ const fs = require('fs');
 
 const reObject = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}{/i;
 const reVariable = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}.{0,};/i;
-const reMethod = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}\([a-z_\d,\s=]{0,}\)\s{0,}{/i;
+const reMethod = /^{?[\s\n]{0,}[#\-<>$@:a-z][a-z\-_\d]+\s{0,}:\s{0,}\([a-z_\d,'"`\s=]{0,}\)\s{0,}{/i;
 const reChild = /^{?[\s\n]{0,}[.a-z][a-z\d.\-_]+\s{0,}({|;)/i;
 
 /* eslint-disable no-extend-native */
@@ -769,10 +769,13 @@ function findIncludesRecursively(file) {
     prePath = prePath.join('/');
 
     let fileContent = fs.readFileSync(file);
-    const reInclude = /\*include:\s{1,}([^<>:"|?*]+);/gi;
-    let returnArray = reInclude.exec(fileContent.toString());
+    const reIncludeMatch = /\*include:\s{1,}[^<>:"|?*]+;/gi;
+    const reIncludeExec = /\*include:\s{1,}([^<>:"|?*]+);/i;
+    let returnArray = fileContent.toString().match(reIncludeMatch);
     if (returnArray) {
-        returnArray.shift();
+        returnArray = returnArray.map((value) => {
+            return reIncludeExec.exec(value)[1];
+        });
     } else {
         returnArray = [];
     }
