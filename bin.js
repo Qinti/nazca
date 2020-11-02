@@ -55,12 +55,15 @@ if (process.argv.length < 3) {
 
             filesToWatch.forEach((file) => {
                 console.log(file);
-                fs.watchFile(file, () => {
+                fs.watchFile(file, async () => {
                     console.log(`${file} is changed. Recompiling...`);
                     if (includes[file]) {
-                        includes[file].forEach((file) => compileFile(file, reverseNames[file], config.out, config.beautify));
+                        for (let i = 0, n = includes[file].length; i < n; i++) {
+                            let include = includes[file][i];
+                            await compileFile(include, reverseNames[include], config.out, config.beautify);
+                        }
                     } else {
-                        compileFile(file, reverseNames[file], config.out, config.beautify);
+                        await compileFile(file, reverseNames[file], config.out, config.beautify);
                     }
                 });
             });
