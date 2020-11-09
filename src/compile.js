@@ -475,7 +475,9 @@ function getClassCode(className, clss, elementID = null) {
         attributes: {},
         getters: {},
         setters: {},
-        eventHandlers: {}
+        eventHandlers: {},
+        public: {},
+        protected: {}
     }) {
         _clss.parents.forEach((parent) => {
             let currentClass = classes_[parent];
@@ -483,11 +485,20 @@ function getClassCode(className, clss, elementID = null) {
                 return;
             }
 
+            let protectedChildren = {};
+            currentClass.children.forEach((child) => {
+                if (child.name) {
+                    protectedChildren[child.name] = child;
+                }
+            });
+
             extendIfNotSet(parentVariables.css, currentClass.style);
             extendIfNotSet(parentVariables.attributes, currentClass.attributes);
             extendIfNotSet(parentVariables.getters, currentClass.getters);
             extendIfNotSet(parentVariables.setters, currentClass.setters);
             extendIfNotSet(parentVariables.eventHandlers, currentClass.eventHandlers);
+            extendIfNotSet(parentVariables.public, Object.assign({}, currentClass.variables.public, currentClass.methods.public));
+            extendIfNotSet(parentVariables.protected, Object.assign({}, currentClass.variables.protected, currentClass.methods.protected, protectedChildren));
 
             if (currentClass.parents.length) {
                 getParentVariables(currentClass, parentVariables);
@@ -498,12 +509,22 @@ function getClassCode(className, clss, elementID = null) {
     }
 
     let parentVariables = getParentVariables(clss);
+
+    let protectedChildren = {};
+    clss.children.forEach((child) => {
+        if (child.name) {
+            protectedChildren[child.name] = child;
+        }
+    });
+
     let classVariables = Object.assign({
         css: Object.assign(parentVariables.css, clss.style),
         attributes: Object.assign(parentVariables.attributes, clss.attributes),
         getters: Object.assign(parentVariables.getters, clss.getters),
         setters: Object.assign(parentVariables.setters, clss.setters),
-        eventHandlers: Object.assign(parentVariables.eventHandlers, clss.eventHandlers)
+        eventHandlers: Object.assign(parentVariables.eventHandlers, clss.eventHandlers),
+        public: Object.assign(parentVariables.public, clss.variables.public, clss.methods.public),
+        protected: Object.assign(parentVariables.protected, clss.variables.protected, clss.methods.protected, protectedChildren)
     });
 
     for (let key in classVariables.attributes) {
@@ -518,7 +539,7 @@ function getClassCode(className, clss, elementID = null) {
 
     constructorBody = clss.methods.public.constructor.body;
     if (constructorBody) {
-        constructorBody = getFunctionBody(replaceVariablesAndFunctions(constructorBody, classVariables, constructorParameters));
+        constructorBody = getFunctionBody(replaceVariablesAndFunctions(constructorBody, classVariables, constructorParameters, !elementID));
     }
 
     body += `function ${className}(${constructorParameters.join(', ')}) {\n`;
@@ -650,7 +671,7 @@ function getClassCode(className, clss, elementID = null) {
                 } else {
                     let method = variable;
                     body += `var ${method} = (${clss[type][access][method].parameters.join(', ')}) => `;
-                    body += replaceVariablesAndFunctions(clss[type][access][method].body, classVariables, clss[type][access][method].parameters);
+                    body += replaceVariablesAndFunctions(clss[type][access][method].body, classVariables, clss[type][access][method].parameters, !elementID);
                     body += `\n`;
 
                     if (access === 'public') {
@@ -714,9 +735,9 @@ function getClassCode(className, clss, elementID = null) {
     let definedGetters = {};
     for (let key in clss.getters) {
         body += `Object.defineProperty(__nazcaThis, '${key}', {\n`;
-        body += `    get: () => ${replaceVariablesAndFunctions(clss.getters[key].body, classVariables, clss.getters[key].parameters)},\n`;
+        body += `    get: () => ${replaceVariablesAndFunctions(clss.getters[key].body, classVariables, clss.getters[key].parameters, !elementID)},\n`;
         if (clss.setters[key]) {
-            body += `set: (${clss.setters[key].parameters.join(', ')}) => ${replaceVariablesAndFunctions(clss.setters[key].body, classVariables, clss.setters[key].parameters)},\n`;
+            body += `set: (${clss.setters[key].parameters.join(', ')}) => ${replaceVariablesAndFunctions(clss.setters[key].body, classVariables, clss.setters[key].parameters, !elementID)},\n`;
         }
         body += `configurable: true\n`;
         body += `});\n`;
@@ -729,7 +750,7 @@ function getClassCode(className, clss, elementID = null) {
         }
 
         body += `Object.defineProperty(__nazcaThis, '${key}', {\n`;
-        body += `    set: (${clss.setters[key].parameters.join(', ')}) => ${replaceVariablesAndFunctions(clss.setters[key].body, classVariables, clss.setters[key].parameters)},\n`;
+        body += `    set: (${clss.setters[key].parameters.join(', ')}) => ${replaceVariablesAndFunctions(clss.setters[key].body, classVariables, clss.setters[key].parameters, !elementID)},\n`;
         body += `    configurable: true\n`;
         body += `});\n`;
     }
@@ -737,7 +758,7 @@ function getClassCode(className, clss, elementID = null) {
     // Define event listeners
     for (let event in clss.eventHandlers) {
         body += `__nazcaThis.__nazcaEventListeners = __nazcaThis.__nazcaEventListeners || {};`;
-        body += `__nazcaThis.__nazcaEventListeners['${event}'] = function (${clss.eventHandlers[event].parameters.join(', ')}) ${replaceVariablesAndFunctions(clss.eventHandlers[event].body, classVariables, clss.eventHandlers[event].parameters)};`;
+        body += `__nazcaThis.__nazcaEventListeners['${event}'] = function (${clss.eventHandlers[event].parameters.join(', ')}) ${replaceVariablesAndFunctions(clss.eventHandlers[event].body, classVariables, clss.eventHandlers[event].parameters, !elementID)};`;
         body += `__nazcaThis.__nazcaElement.addEventListener('${event}', __nazcaThis.__nazcaEventListeners['${event}']);\n`;
         body += `Object.defineProperty(__nazcaThis, '@${event}', {\n`;
         body += `    set: (method) => {\n`;
@@ -974,14 +995,14 @@ function getFunctionBody(bodyWithBrackets) {
     return bodyWithBrackets.slice(openBracket + 1, closeBracket);
 }
 
-function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
+function replaceVariablesAndFunctions(body, classVariables, exceptParameters, local = true) {
     // separate function on lines
     let blockIndex = 0;
     let defined = [];
     let definedGlobally = [];
 
     let variables = Object.keys(Object.assign({}, classVariables.css, classVariables.attributes, classVariables.getters,
-        classVariables.setters, classVariables.eventHandlers)).concat(['text', 'value', 'children', 'html', 'trigger']);
+        classVariables.setters, classVariables.eventHandlers, classVariables.protected)).concat(['text', 'value', 'children', 'html', 'trigger']);
 
     for (let except in exceptParameters) {
         variables = variables.filter((value) => value !== exceptParameters[except]);
@@ -1041,7 +1062,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
 
                 variables.forEach((variable) => {
                     if (!(defined[blockIndex] && defined[blockIndex][variable]) && !definedGlobally[variable] && part.indexOf(variable) >= 0) {
-                        part = replaceVariable(part, variable);
+                        part = replaceVariable(part, variable, !!classVariables.protected[variable], local);
                     }
                 });
 
@@ -1057,7 +1078,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters) {
     return `{\n${lines.join('\n')}}\n`;
 }
 
-function replaceVariable(content, variableName) {
+function replaceVariable(content, variableName, isProtected, local = true) {
     if (!global.stringMap[content]) {
         tools.buildStrings(content, true);
     }
@@ -1072,6 +1093,13 @@ function replaceVariable(content, variableName) {
 
             let point = variable.indexOf('[') === 0 ? '' : '.';
             let replacement = `__nazcaThis${point}${variable}`;
+            if (isProtected) {
+                if (local) {
+                    replacement = `__nazcaThis.__nazcaProtected${point}${variable}`;
+                } else {
+                    replacement = `window${point}${variable}`;
+                }
+            }
             content = `${content.slice(0, index)}${replacement}${content.slice(index + variable.length)}`;
             index = content.indexOfCode(variable, index + replacement.length);
         }
