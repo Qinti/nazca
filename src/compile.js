@@ -1083,6 +1083,7 @@ function replaceVariable(content, variableName, isProtected, local = true) {
         tools.buildStrings(content, true);
     }
 
+    let replacements = [];
     [variableName, `['${variableName}']`, `[\`${variableName}\`]`, `["${variableName}"]`].forEach((variable) => {
         let index = content.indexOfCode(variable);
         while (index >= 0) {
@@ -1100,10 +1101,14 @@ function replaceVariable(content, variableName, isProtected, local = true) {
                     replacement = `window${point}${variable}`;
                 }
             }
-            content = `${content.slice(0, index)}${replacement}${content.slice(index + variable.length)}`;
-            index = content.indexOfCode(variable, index + replacement.length);
+            replacements.push({index, replacement, length: variable.length});
+            index = content.indexOfCode(variable, index + variable.length);
         }
     });
+
+    for (let i = replacements.length - 1; i >= 0; i--) {
+        content = `${content.slice(0, replacements[i].index)}${replacements[i].replacement}${content.slice(replacements[i].index + replacements[i].length)}`;
+    }
 
     return content;
 }
