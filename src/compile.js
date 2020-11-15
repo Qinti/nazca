@@ -808,7 +808,7 @@ function getClassCode(className, clss, elementID = null) {
         body += `event = new Event(event);\n`;
         body += `}\n`;
         body += `__nazcaThis.__nazcaElement.dispatchEvent(event);\n`;
-        body += `}`;
+        body += `};\n`;
     }
 
     if (clss.variables.public.text) {
