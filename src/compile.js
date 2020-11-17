@@ -1134,7 +1134,7 @@ function addQuotes(value) {
     const reRegex = /^\/[^\/]+\/[gmixXsuAJD]*$/;
 
     if (!reRegex.test(value) && value.charAt(0) !== '{' && value.charAt(0) !== '[' && value != parseInt(value) && value !== 'true' && value !== 'false') {
-        value = `'${value.replace(/'/g, `\\'`)}'`;
+        value = `\`${value.replace(/'+/g, `\\'`)}\``;
     } else if (value === 'true') {
         value = true;
     } else if (value === 'false') {
