@@ -68,6 +68,7 @@ const properties = [
     'align-content',
     'align-items',
     'align-self',
+    'filter',
     'flex',
     'flex-basis',
     'flex-direction',
