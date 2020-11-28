@@ -1,6 +1,6 @@
 {
   "name": "nazca",
-  "version": "0.16.7",
+  "version": "0.17.0",
   "description": "A great new way of creating GUI in the web",
   "main": "compile.js",
   "dependencies": {

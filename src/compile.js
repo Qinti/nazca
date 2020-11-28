@@ -329,6 +329,8 @@ function compile(file, name, out, beautify) {
             }
         }
 
+        html_ = `<!DOCTYPE html>\n${html_}`;
+
         fs.writeFile(path_.join(out.path, out.js, `${fileName}.js`), js_, writeCallback);
         fs.writeFile(path_.join(out.path, out.html, htmlName), html_, writeCallback);
         fs.writeFile(path_.join(out.path, out.css, `${fileName}.css`), css_, writeCallback);
@@ -811,12 +813,14 @@ function getClassCode(className, clss, elementID = null) {
         body += `};\n`;
     }
 
-    if (clss.variables.public.text) {
-        body += `__nazcaThis.text = ${addQuotes(clss.variables.public.text)};\n`;
-    }
+    if (!elementID) {
+        if (clss.variables.public.text) {
+            body += `__nazcaThis.text = ${addQuotes(clss.variables.public.text)};\n`;
+        }
 
-    if (clss.variables.public.html) {
-        body += `__nazcaThis.html = ${addQuotes(clss.variables.public.html)};\n`;
+        if (clss.variables.public.html) {
+            body += `__nazcaThis.html = ${addQuotes(clss.variables.public.html)};\n`;
+        }
     }
 
     clss.children.forEach((child) => {
@@ -826,7 +830,9 @@ function getClassCode(className, clss, elementID = null) {
 
         if (js) {
             body += js;
-            body += `__nazcaThis.children.add(${elementID ? `window.${child.name}` : child.name});\n`;
+            if (!elementID) {
+                body += `__nazcaThis.children.add(${child.name});\n`;
+            }
         }
     });
 
@@ -838,7 +844,12 @@ function getClassCode(className, clss, elementID = null) {
         let value = clss.attributes[attr];
         body += `__nazcaThis['$${attr}'] = ${addQuotes(value)};\n`;
     }
+
     for (let css in clss.style) {
+        if (classes_[className] && classes_[className].style[css] === clss.style[css]) {
+            continue;
+        }
+
         let value = clss.style[css];
         body += `__nazcaThis['${css}'] = ${addQuotes(value)};\n`;
     }
