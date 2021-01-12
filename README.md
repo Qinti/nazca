@@ -10,6 +10,34 @@ define how object looks, how object acts and how it is placed in the hierarchy.
 There is no need to write separate css/html/js files - one *.nazca file will do 
 everything.  
 
+Table of Contents
+=================
+- [Installation](#installation)
+- [Guide](#guide)
+  + [Initialization](#initialization)
+    - [Output to folders](#output-to-folders)
+  + [Compile](#compile)
+  + [Analyze](#analyze)
+  + [Watch](#watch)
+  + [Tutorial](#tutorial)
+    - [Simple "Hello world"](#simple--hello-world-)
+    - [Styled "Hello world"](#styled--hello-world-)
+    - [Going classy](#going-classy)
+    - [Separating the file](#separating-the-file)
+    - [Let's do something!](#let-s-do-something-)
+    - [Construction](#construction)
+    - [Event handlers](#event-handlers)
+    - [Getters and Setters](#getters-and-setters)
+    - [Hierarchy manipulation](#hierarchy-manipulation)
+    - [Inheritance](#inheritance)
+    - [Method inheritance](#method-inheritance)
+    - [Data from the server](#data-from-the-server)
+    - [Font-face directive](#font-face-directive)
+    - [Object states](#object-states)
+    - [Custom events](#custom-events)
+    - [Hierarchy access](#hierarchy-access)
+    - [Conclusion note](#conclusion-note)
+
 ## Installation
 Simply install it globally with the `npm`
 ```shell script
@@ -19,7 +47,7 @@ npm i -g nazca
 ## Guide  
 You can think of it as an extended CSS. In general it defines the style, as a regular CSS would do. Now add to the CSS 
 the functions and event handlers as JS does. After that just add a simple hierarchy of the children elements, as HTML 
-does. If you imagine it all together, you'll get nazca, simple and beautiful.
+does. If you imagine it all together, you'll get nazca - simple and beautiful.
 
 ### Initialization
 Firstly you should initialize the project, adding .nazca file - this is a file with instructions on how to compile 
@@ -873,6 +901,80 @@ class Colorful < div {
     };
 };
 ```
+
+#### Hierarchy access
+All child elements in the hierarchy are automatically assigned as a protected property of the parent object.
+```javascript
+.html {
+    .body {
+        constructor: () {
+            borderedElement.childColor = 'violet';
+            // You can't access textElement directly
+
+        };
+
+        borderedElement.div {
+           border: 1px solid black;
+
+            >childColor: (_color = 'black') {
+                textElement.color = _color;
+            };
+
+            textElement.div {
+                text: You can access this element from the borderedElement, but not from the it's parrent.;
+                color: black;
+            };
+        };
+    };
+};
+```
+
+If you want the child element to be assigned as a `public` property instead of `protected`, you should set `public: true`
+```javascript
+.html {
+    .body {
+        constructor: () {
+            borderedElement.textElement.color = 'violet';
+            // Now you can access textElement directly
+        };
+
+        borderedElement.div {
+           border: 1px solid black;
+
+            textElement.div {
+                public: true;
+                text: You can access this element from the borderedElement, and from other elements as a public property of borderedElement;
+                color: black;
+            };
+        };
+    };
+};
+```
+You can make it public in the hierarchy as well as in the class declaration. If you define it in the class, all 
+instances of the class will be assigned as public properties to their parents.
+```javascript
+class TextElement < div {
+    public: true;
+    text: You can access this element from the borderedElement, and from other elements as a public property of borderedElement;
+    color: black;
+};
+
+.html {
+    .body {
+        constructor: () {
+            borderedElement.textElement.color = 'violet';
+            // You can access textElement directly, because it is an instance of the class that is declared as public
+        };
+
+        borderedElement.div {
+           border: 1px solid black;
+
+           textElement.TextElement;
+        };
+    };
+};
+```
+
 
 #### Conclusion note
 Nazca is a new project that could not reach it's full potential yet. While it covers all of HTML generation and you 
