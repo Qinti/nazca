@@ -438,7 +438,11 @@ function getJSFromHierarchy(object, local = false, className, parentVariables) {
 
         if (local) {
             body += `var ${object.name} = new ${className}();\n`;
-            body += `__nazcaThis.__nazcaProtected.${object.name} = ${object.name};\n`;
+            if (isPublicChild(object)) {
+                body += `__nazcaThis.${object.name} = ${object.name};\n`;
+            } else {
+                body += `__nazcaThis.__nazcaProtected.${object.name} = ${object.name};\n`;
+            }
         } else {
             body += `window.${object.name} = new ${className}();\n`;
         }
@@ -449,6 +453,24 @@ function getJSFromHierarchy(object, local = false, className, parentVariables) {
     }
 
     return body;
+}
+
+function isPublicChild(object) {
+    if (object.variables.public.public) {
+        return true;
+    }
+
+    for (let i = 0, n = object.classes.length; i < n; i++) {
+        let clss = object.classes[i];
+        if (classes_[clss] &&
+            ((typeof classes_[clss].variables.public.public === 'string' &&
+                classes_[clss].variables.public.public === 'true')
+                || classes_[clss].variables.public.public)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function extendIfNotSet(object, extend) {

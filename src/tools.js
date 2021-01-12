@@ -359,7 +359,7 @@ function getClassMap(content, startIndex) {
                     index = classDeclaration.indexOf('\n', index);
                 } else {
                     index = classDeclaration.indexOf('/*', index);
-                    index = classDeclaration.indexOf('*/', index);
+                    index = classDeclaration.indexOf('*/', index) + 2;
                 }
                 return parseNextProperty(index);
             }
