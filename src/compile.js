@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path_ = require('path');
-const parse = require('node-html-parser').parse;
+const parse = require('./parseHTML');
 const tools = require('./tools');
 
 const htmlTags = require('./htmlTags');
@@ -195,27 +195,19 @@ function compile(file, name, out, beautify) {
         });
 
         let root = parse(html_);
-        let head = root.querySelector('head');
-        if (!head) {
-            let html = root.querySelector('html');
-            if (!html) {
-                throw {
-                    message: 'Your hierarchy should have html as a parent node'
-                };
-            }
-            html.appendChild('<head></head>');
-
-            root = parse(root.innerHTML);
-            head = root.querySelector('head');
+        if (!root.hasHTML) {
+            throw {
+                message: 'Your hierarchy should have html as a parent node'
+            };
         }
 
         /* eslint-disable no-useless-escape */
         let fileName = name.replace(/[\/\\]/g, '');
 
-        head.appendChild(`<script src="/${out.js}/${fileName}.js" type="application/javascript"></script>`);
-        head.appendChild(`<link rel="stylesheet" type="text/css" href="/${out.css}/${fileName}.css">`);
+        root.addToHead(`<script src="/${out.js}/${fileName}.js" type="application/javascript"></script>`);
+        root.addToHead(`<link rel="stylesheet" type="text/css" href="/${out.css}/${fileName}.css">`);
 
-        html_ = root.innerHTML;
+        html_ = root.html;
     }).then(() => {
         // 7. Go though the classes - generate functions (JS classes)
 
@@ -385,6 +377,10 @@ function getJSFromHierarchy(object, local = false, className, parentVariables) {
     className = className || tools.nextID();
 
     function shouldGenerate(object) {
+        // local hierarchy of the class
+        if (local) {
+            return true;
+        }
         // has name
         if (object.name) {
             return true;
