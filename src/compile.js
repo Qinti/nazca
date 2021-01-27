@@ -672,7 +672,7 @@ function getClassCode(className, clss, elementID = null) {
             for (let variable in clss[type][access]) {
                 let value = clss[type][access][variable];
 
-                if (access === 'public' && type === 'variables' && variable === 'text') {
+                if (access === 'public' && type === 'variables' && ['text', 'html'].includes(variable)) {
                     continue;
                 }
 
