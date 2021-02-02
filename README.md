@@ -36,6 +36,7 @@ Table of Contents
     - [Object states](#object-states)
     - [Custom events](#custom-events)
     - [Hierarchy access](#hierarchy-access)
+    - [Going native](#going-native)
     - [Conclusion note](#conclusion-note)
 
 ## Installation
@@ -423,7 +424,7 @@ nothing, and the method is never called. In the next section, we will discuss on
 
 #### Construction
 Every class in nazca could have a special method, called `constructor`. This is the first method that is executed, when 
-the object is initialized with `new ClassName(...inputParameters);`. It is always public   
+the object is initialized with `new ClassName(...inputParameters);`. It is always public.   
 In our case we do not initialise it in with the `new` keyword, but we have the object that is the part of the hierarchy.
 In this case, the constructor will be called as soon as the object is loaded on the page (to be precise, when the 
 `DOMContentLoaded` event is fired).  
@@ -975,6 +976,34 @@ class TextElement < div {
 };
 ```
 
+#### Going native
+Sometime you want to use native HTML elements and its properties from your methods. For this, all nazca objects have a special 
+`native` getter. It simply returns the native HTML element. Attributes, event listeners and CSS properties should be 
+used with nazca objects, when possible.  
+Avoid using `native` too much. It is implemented just for cases, when you use a special element and need to access it's properties directly.
+```javascript
+class NativeTester < div {
+    constructor: () {
+        let context = myCanvas.native.getContext('2d');
+        
+        context.font = '48px serif';
+        context.fillText('Hello canvas!', 0, 0);
+    };
+
+    myCanvas.canvas {
+        $width: 200px;
+        $height: 200px;
+    };
+};
+
+.html {
+    .body {
+        .NativeTest;
+    };
+};
+```  
+
+`native` in the code above is used to access `getContext()` method of the `canvas` native element.
 
 #### Conclusion note
 Nazca is a new project that could not reach it's full potential yet. While it covers all of HTML generation and you 

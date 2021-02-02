@@ -829,6 +829,11 @@ function getClassCode(className, clss, elementID = null) {
         body += `}\n`;
         body += `__nazcaThis.__nazcaElement.dispatchEvent(event);\n`;
         body += `};\n`;
+
+        body += `Object.defineProperty(__nazcaThis, 'native', {\n`;
+        body += `get: () => __nazcaThis.__nazcaElement,\n`;
+        body += `configurable: true\n`;
+        body += `});\n`;
     }
 
     if (!elementID) {
