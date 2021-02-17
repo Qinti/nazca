@@ -12,6 +12,7 @@ let html_ = '';
 let js_ = '';
 let elements_ = [];
 let reductions = [];
+let includedFiles_ = {};
 let content_;
 
 /**
@@ -101,6 +102,7 @@ function read(file) {
 function compile(file, name, out, beautify) {
     reductions = [];
     classes_ = {};
+    includedFiles_={};
 
     classes_ = {};
     hierarchy_ = {children: []};
@@ -112,11 +114,11 @@ function compile(file, name, out, beautify) {
     tools.resetID();
 
     // 1. Find all includes and merge the file into one
-    return recursivelyInclude(file).then((content) => {
-        tools.buildStrings(content);
-        content_ = content;
+    return recursivelyInclude(file).then((file) => {
+        tools.buildStrings(file.content);
+        content_ = file.content;
         // 2. Create a map of classes
-        classes_ = tools.getClassMap(content);
+        classes_ = tools.getClassMap(file.content);
     }).then(() => {
         // 3. Create a hierarchy of the page
 
@@ -975,6 +977,7 @@ function recursivelyInclude(file) {
     let prePath = file.split(/\/|\\/);
     prePath.pop();
     prePath = prePath.join('/');
+
     return read(file).then((fileContent) => {
         let start = fileContent.indexOfCode('*include');
         let promises = [];
@@ -991,19 +994,28 @@ function recursivelyInclude(file) {
 
             path = path.replace(/'/g, '').trim();
             replacements.push({start, end});
-            promises.push(recursivelyInclude(
-                path_.join(prePath, path)
-            ));
+            promises.push(recursivelyInclude(path_.join(prePath, path)));
 
             start = fileContent.indexOfCode('*include', end);
         }
 
-        return Promise.all(promises).then((contents) => {
+
+        return Promise.all(promises).then((files) => {
+            files = files.map((file) => {
+                if (includedFiles_[file.file]) {
+                    file.content = '';
+                } else {
+                    includedFiles_[file.file] = 1;
+                }
+
+                return file;
+            });
+
             let lastReduction = 0;
-            for (let i = contents.length - 1; i >= 0; i--) {
+            for (let i = files.length - 1; i >= 0; i--) {
                 let [line] = tools.calculateLineColumn(fileContent, replacements[i].start);
-                fileContent = fileContent.slice(0, replacements[i].start) + contents[i] + fileContent.slice(replacements[i].end + 1);
-                let includeLinesCount = contents[i].split('\n').length;
+                fileContent = fileContent.slice(0, replacements[i].start) + files[i].content + fileContent.slice(replacements[i].end + 1);
+                let includeLinesCount = files[i].content.split('\n').length;
                 line += includeLinesCount;
                 lastReduction = lastReduction + includeLinesCount - 1;
                 reductions[line] = lastReduction;
@@ -1018,7 +1030,7 @@ function recursivelyInclude(file) {
                 }
             }
 
-            return fileContent;
+            return {content: fileContent, file};
         });
     });
 }
