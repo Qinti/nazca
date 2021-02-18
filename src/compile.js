@@ -1048,7 +1048,7 @@ function replaceVariablesAndFunctions(body, classVariables, exceptParameters, lo
     let definedGlobally = [];
 
     let variables = Object.keys(Object.assign({}, classVariables.css, classVariables.attributes, classVariables.getters,
-        classVariables.setters, classVariables.eventHandlers, classVariables.protected)).concat(['text', 'value', 'children', 'html', 'trigger']);
+        classVariables.setters, classVariables.eventHandlers, classVariables.protected)).concat(['text', 'value', 'children', 'html', 'trigger', 'native']);
 
     for (let except in exceptParameters) {
         variables = variables.filter((value) => value !== exceptParameters[except]);
