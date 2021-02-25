@@ -530,6 +530,15 @@ class someClass < input{
     $placeholder: Your text;
 };
 ```
+
+To remove the attribute, you should set it to `null` or `undefined`
+```javascript
+class someButton < button{
+    $disabled: null;
+    text: Disabled button;
+};
+```
+
 See <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes" target="_blank">the full list of attributes</a>
   
 In this tutorial we added an event handler for the nazca object, by prepending `@` to the event name. For example:

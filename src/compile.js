@@ -711,7 +711,12 @@ function getClassCode(className, clss, elementID = null) {
         for (let key in clss.attributes) {
             body += `Object.defineProperty(__nazcaThis, '$${key}', {\n`;
             body += `    get: () => __nazcaThis.__nazcaElement.getAttribute('${key}'),\n`;
-            body += `    set: (value) => {__nazcaThis.__nazcaElement.setAttribute('${key}', value);},\n`;
+            body += `    set: (value) => {\n`;
+            body += `        if (value == undefined || value == null) {\n`;
+            body += `            return __nazcaThis.__nazcaElement.removeAttribute('${key}');\n`;
+            body += `        }\n`;
+            body += `        __nazcaThis.__nazcaElement.setAttribute('${key}', value);\n`;
+            body += `    },\n`;
             body += `    configurable: true\n`;
             body += `});\n`;
         }
