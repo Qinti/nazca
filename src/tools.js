@@ -240,51 +240,54 @@ function calculateLineColumn(content, position) {
     return [line, column];
 }
 
-function getClassMap(content, startIndex) {
+function getClassMap(_file, content, startIndex) {
     let classMap = {};
-    let start = content.indexOfCode('class ', startIndex);
+    let start = indexOfClassDeclaration(content, startIndex);
     while (start >= 0) {
         let openBracket = content.indexOfCode('{', start);
         if (openBracket < 0) {
             let [line, column] = calculateLineColumn(content, start);
-            /* eslint-disable no-throw-literal */
             throw {
                 message: 'Missing { for class definition',
                 line,
                 column: [column, column + 5],
                 index: start,
-                classMap
+                classMap,
+                file: _file,
+                level: 'error'
             };
         }
 
         if (!/^class ([a-z_$][a-z\d_$]+)(?:\s*<\s*[a-z_$][a-z_\d$]*)*\s*{/i.test(content.slice(start, openBracket + 1))) {
             let [line1, column1] = calculateLineColumn(content, start);
             let [line2, column2] = calculateLineColumn(content, openBracket);
-            /* eslint-disable no-throw-literal */
             throw {
                 message: 'Class declaration is invalid',
                 line: line1 === line2 ? line1 : [line1, line2],
                 column: [column1, column2],
                 index: openBracket,
-                classMap
+                classMap,
+                file: _file,
+                level: 'error'
             };
         }
 
         let closingBracket = findClosingBracket(content, openBracket);
         if (closingBracket < 0) {
             let [line, column] = calculateLineColumn(content, start);
-            /* eslint-disable no-throw-literal */
             throw {
                 message: 'Missing } for class definition',
                 line,
                 column: column + 5,
                 index: start + 5,
-                classMap
+                classMap,
+                file: _file,
+                level: 'error'
             };
         }
 
         parseClass(content.slice(start, closingBracket + 1), start);
-        start = content.indexOfCode('class ', closingBracket + 1);
+        start = indexOfClassDeclaration(content, closingBracket + 1);
     }
 
     function parseClass(classDeclaration, start) {
@@ -305,15 +308,16 @@ function getClassMap(content, startIndex) {
             eventHandlers: {},
             states: {},
             methods: {private: {}, protected: {}, public: {}},
-            children: []
+            children: [],
+            file: _file
         };
 
         let property;
         try {
             property = parseNextProperty(firstBracket + 1);
-        } catch (e) {
-            Object.assign(e, {classMap});
-            throw e;
+        } catch (err) {
+            Object.assign(err, {classMap});
+            throw err;
         }
         while (property) {
             const typeMap = {
@@ -326,9 +330,17 @@ function getClassMap(content, startIndex) {
                 eventHandler: 'eventHandlers',
                 state: 'states'
             };
+            let [line, column] = calculateLineColumn(content, firstBracket + 1)
             if (property.type === 'css' && typeof property.value !== 'string') {
-                /* eslint-disable no-throw-literal */
-                throw `CSS property '${property.name}' can not be overridden`;
+                throw {
+                    message: `CSS property '${property.name}' can not be overridden`,
+                    line,
+                    column,
+                    index: firstBracket + 1,
+                    classMap,
+                    file: _file,
+                    level: 'error'
+                };
             }
 
             if (property.type === 'variable' || property.type === 'method') {
@@ -341,9 +353,9 @@ function getClassMap(content, startIndex) {
 
             try {
                 property = parseNextProperty((property.index || property.end) - start + 2);
-            } catch (e) {
-                Object.assign(e, {classMap});
-                throw e;
+            } catch (err) {
+                Object.assign(err, {classMap});
+                throw err;
             }
         }
 
@@ -365,9 +377,9 @@ function getClassMap(content, startIndex) {
             }
 
             if (reMethod.test(nextProperty) || reObject.test(nextProperty) || reVariable.test(nextProperty)) {
-                return parseProperty(content, start + index);
+                return parseProperty(_file, content, start + index);
             } else if (reChild.test(nextProperty)) {
-                return getNextChild(content, start + index);
+                return getNextChild(_file, content, start + index);
             } else {
                 let [line1, column1] = calculateLineColumn(content, start + index);
                 let nextColon = content.indexOfCode(';', start + index);
@@ -376,12 +388,13 @@ function getClassMap(content, startIndex) {
                 }
                 let [line2, column2] = calculateLineColumn(content, nextColon);
 
-                /* eslint-disable no-throw-literal */
                 throw {
                     message: 'The property is invalid',
                     line: line1 === line2 ? line1 : [line1, line2],
                     column: [column1, column2],
-                    index: nextColon
+                    index: nextColon,
+                    file: _file,
+                    level: 'error'
                 };
             }
         }
@@ -390,7 +403,7 @@ function getClassMap(content, startIndex) {
     return classMap;
 }
 
-function parseProperty(content, index) {
+function parseProperty(_file, content, index) {
     let nameEnd = content.indexOfCode(':', index);
     if (nameEnd < 0) {
         return null;
@@ -409,12 +422,13 @@ function parseProperty(content, index) {
         let [line, column1] = calculateLineColumn(content, index + 1);
         /* eslint-disable no-unused-vars */
         let [line2, column2] = calculateLineColumn(content, nameEnd);
-        /* eslint-disable no-throw-literal */
         throw {
             message: `Invalid property name '${name}'`,
             line,
             column: [column1, column2],
-            index: nameEnd
+            index: nameEnd,
+            file: _file,
+            level: 'error'
         };
     }
 
@@ -507,8 +521,8 @@ function parseProperty(content, index) {
     }
 }
 
-function getNextChild(content, index = 0) {
-    let elementIndex = findChildIndex(content, index);
+function getNextChild(_file, content, index = 0) {
+    let elementIndex = findChildIndex(_file, content, index);
     let openingBracket = content.indexOfCode('{', elementIndex);
     let semiColon = content.indexOfCode(';', elementIndex);
     let closingBracket = findClosingBracket(content, openingBracket);
@@ -524,10 +538,10 @@ function getNextChild(content, index = 0) {
 
     if (/^\/\//.test(declaration)) {
         let nextEndLine = content.indexOf('\n', index + 2);
-        return getNextChild(content, nextEndLine + 1);
+        return getNextChild(_file, content, nextEndLine + 1);
     } else if (/^\/\*/.test(declaration)) {
         let blockCommentEnd = content.indexOf('*/', index + 2);
-        return getNextChild(content, blockCommentEnd + 2);
+        return getNextChild(_file, content, blockCommentEnd + 2);
     }
 
     let children = [];
@@ -569,7 +583,7 @@ function getNextChild(content, index = 0) {
         (nextColon >= 0 && nextColon < closingBracket) ||
         (nextSemiColon >= 0 && nextSemiColon < closingBracket)) {
         if (nextColon >= 0 && (nextColon < nextOpeningBracket || nextOpeningBracket < 0)) {
-            let property = parseProperty(content, nextChildEnd + 2);
+            let property = parseProperty(_file, content, nextChildEnd + 2);
             const typeMap = {
                 variable: 'variables',
                 css: 'style',
@@ -581,8 +595,15 @@ function getNextChild(content, index = 0) {
                 state: 'states'
             };
             if (property.type === 'css' && typeof property.value !== 'string') {
-                /* eslint-disable no-throw-literal */
-                throw `CSS property '${property.name}' can not be overridden`;
+                let [line, column] = calculateLineColumn(content, nextChildEnd + 2);
+                throw {
+                    message: `CSS property '${property.name}' can not be overridden`,
+                    line,
+                    column,
+                    index: nextChildEnd + 2,
+                    file: _file,
+                    level: 'error'
+                };
             }
 
             if (property.type === 'variable' || property.type === 'method') {
@@ -592,7 +613,7 @@ function getNextChild(content, index = 0) {
             }
             nextChildEnd = property.index + 2;
         } else {
-            let nextChild = getNextChild(content, nextChildEnd);
+            let nextChild = getNextChild(_file, content, nextChildEnd);
             nextChildEnd = nextChild.end + 1;
             children.push(nextChild);
         }
@@ -613,7 +634,7 @@ function getNextChild(content, index = 0) {
     }, properties);
 }
 
-function getChildren(content, index = 0) {
+function getChildren(_file, content, index = 0) {
     const reInclude = /^\*include/;
     const reJSON = /^\*json/;
     const reFontFace = /^\*font-face/;
@@ -638,13 +659,14 @@ function getChildren(content, index = 0) {
                 index = content.indexOf(';', closingBracket) + 1;
                 let [line1, column1] = calculateLineColumn(content, previousIndex);
                 let [line2, column2] = calculateLineColumn(content, index);
-                /* eslint-disable no-throw-literal */
                 throw {
                     message: `Class should have an opening bracket`,
                     line: line1 === line2 ? line1 : [line1, line2],
                     column: [column1, column2],
                     index,
-                    children
+                    children,
+                    file: _file,
+                    level: 'error'
                 };
             }
 
@@ -656,7 +678,7 @@ function getChildren(content, index = 0) {
         } else if (reBlockComment.test(nextWord)) {
             index = content.indexOf('*/', index + 2) + 2
         } else if (reChild.test(nextWord)) {
-            let child = getNextChild(content, index);
+            let child = getNextChild(_file, content, index);
             children.push(child);
             index = child.end + 1;
         } else if (nextWord === '}') {
@@ -665,13 +687,14 @@ function getChildren(content, index = 0) {
             let nextSemiColon = content.indexOf(';', index);
             let [line1, column1] = calculateLineColumn(content, index);
             let [line2, column2] = calculateLineColumn(content, nextSemiColon);
-            /* eslint-disable no-throw-literal */
             throw {
                 message: `The statement is not recognized. Should be *include, *json, *font-face, class or hierarchy`,
                 line: line1 === line2 ? line1 : [line1, line2],
                 column: [column1, column2],
                 index: nextSemiColon + 1,
-                children
+                children,
+                file: _file,
+                level: 'error'
             };
         }
 
@@ -681,7 +704,7 @@ function getChildren(content, index = 0) {
     return children;
 }
 
-function findChildIndex(content, index) {
+function findChildIndex(_file, content, index) {
     let closeSymbol;
     const quoteRegex = /['"/`]/;
     if (index < 0) {
@@ -699,8 +722,14 @@ function findChildIndex(content, index) {
                 return i;
             } else if (!/[\t\s\n]/i.test(content.charAt(i))) {
                 let [line, column] = calculateLineColumn(content, i);
-                /* eslint-disable no-throw-literal */
-                throw {message: `Unexpected symbol '${content.charAt(i)}'`, line, column, index: i};
+                throw {
+                    message: `Unexpected symbol '${content.charAt(i)}'`,
+                    line,
+                    column,
+                    index: i,
+                    file: _file,
+                    level: 'error'
+                };
             }
         }
     }
@@ -708,7 +737,7 @@ function findChildIndex(content, index) {
     return -1;
 }
 
-function getListOfJSONFiles(content) {
+function getListOfJSONFiles(_file, content) {
     let jsonIndex = 0;
     jsonIndex = content.indexOfCode('*json', jsonIndex);
     let jsonFiles = [];
@@ -728,7 +757,9 @@ function getListOfJSONFiles(content) {
                 message: `*json directive is invalid. Should be in format of '*json: objectName=path/to/file.json;'`,
                 line: line1 === line2 ? line1 : [line1, line2],
                 column: [column1, column2],
-                index: valueEnd
+                index: valueEnd,
+                file: _file,
+                level: 'error'
             }
         }
 
@@ -791,6 +822,21 @@ function findIncludesRecursively(file) {
     return returnArray;
 }
 
+function indexOfClassDeclaration(content, index = 0) {
+    while (true) {
+        index = content.indexOfCode('class ', index);;
+        if (index < 0) {
+            return index;
+        }
+
+        let previous = content.charAt(index - 1);
+        if (previous === ' ' || previous === '\n') {
+            return index;
+        }
+        index++;
+    }
+}
+
 module.exports = {
     buildStrings,
     findClosingBracket,
@@ -802,5 +848,6 @@ module.exports = {
     getListOfJSONFiles,
     makeVariable,
     flattenNazcaConfig,
-    findIncludesRecursively
+    findIncludesRecursively,
+    indexOfClassDeclaration
 };

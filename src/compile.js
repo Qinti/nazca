@@ -2,6 +2,7 @@ const fs = require('fs');
 const path_ = require('path');
 const parse = require('./parseHTML');
 const tools = require('./tools');
+const analyse = require('./analyse').analyse;
 
 const htmlTags = require('./htmlTags');
 
@@ -11,7 +12,6 @@ let css_ = '';
 let html_ = '';
 let js_ = '';
 let elements_ = [];
-let reductions = [];
 let includedFiles_ = {};
 let content_;
 
@@ -80,8 +80,10 @@ function compileAll() {
                 await compile(file, name, config.out, config.beautify);
             }
         } else {
-            /* eslint-disable no-throw-literal */
-            throw {message: '.nazca config file should have sources array'};
+            throw {
+                message: '.nazca config file should have sources array',
+                file: '.nazca'
+            };
         }
     }).catch((err) => {
         console.error(err.message);
@@ -100,9 +102,8 @@ function read(file) {
 }
 
 function compile(file, name, out, beautify) {
-    reductions = [];
     classes_ = {};
-    includedFiles_={};
+    includedFiles_ = {};
 
     classes_ = {};
     hierarchy_ = {children: []};
@@ -118,26 +119,26 @@ function compile(file, name, out, beautify) {
         tools.buildStrings(file.content);
         content_ = file.content;
         // 2. Create a map of classes
-        classes_ = tools.getClassMap(file.content);
+        classes_ = tools.getClassMap(file.file, file.content);
     }).then(() => {
         // 3. Create a hierarchy of the page
 
         // removing all the classes from the file
         let classless = '';
         let closingBracket = 0;
-        let classIndex = content_.indexOfCode('class ');
+        let classIndex = tools.indexOfClassDeclaration(content_);
         while (classIndex >= 0) {
             classless += content_.slice(closingBracket, classIndex);
             let openBracket = content_.indexOfCode('{', classIndex);
             closingBracket = tools.findClosingBracket(content_, openBracket);
             closingBracket += 2;
-            classIndex = content_.indexOfCode('class ', classIndex + 1);
+            classIndex = tools.indexOfClassDeclaration(content_, classIndex + 1);
         }
         classless += content_.slice(closingBracket);
 
         tools.buildStrings(classless);
 
-        hierarchy_ = {children: tools.getChildren(classless)};
+        hierarchy_ = {children: tools.getChildren(file, classless)};
     }).then(() => {
         // 4. Starting generating the html/css/js
 
@@ -220,7 +221,7 @@ function compile(file, name, out, beautify) {
         }
 
         // 8. Search for *json, add <script> to the hierarchy
-        let jsonFiles = tools.getListOfJSONFiles(content_);
+        let jsonFiles = tools.getListOfJSONFiles(file, content_);
         jsonFiles.forEach(({name, value}) => {
             js_ += `{
                 let xhr = new XMLHttpRequest();
@@ -319,7 +320,8 @@ function compile(file, name, out, beautify) {
             beautify = 0;
         } else {
             throw {
-                message: `'beautify' should be one of these values [-1;0;1]`
+                message: `'beautify' should be one of these values [-1;0;1]`,
+                file: '.nazca'
             }
         }
 
@@ -330,46 +332,74 @@ function compile(file, name, out, beautify) {
         fs.writeFile(path_.join(out.path, out.css, `${fileName}.css`), css_, writeCallback);
     }).then(() => console.log(`${file} compiled ${beautify === 1 ? 'and beautified ' : (beautify === -1 ? 'and uglified ' : '')}successfully`)
     ).catch((e) => {
-        let errorLocation;
-        let code;
-        let lines = content_.split('\n');
-        let cursor = '';
+        read(file).then((content) => {
+            let errors = analyse(file, content, true).errors.filter((err) => err.code !== 'erroredInclude')
 
-        if (!e.line) {
-            return console.error('\x1b[31m%s\x1b[0m', e);
-        }
+            let errorPromises = errors.map((error) => {
+                if (!error.line) {
+                    return {
+                        message: error.message
+                    }
+                }
 
-        if (e.line.length && e.column.length) {
-            let line1 = e.line[0] - reductions[e.line[0] - 1] + 1;
-            let line2 = e.line[1] - reductions[e.line[1] - 1] + 1;
-            errorLocation = `${line1}:${e.column[0]} - ${line2}:${e.column[1]}`;
-            code = lines.slice(e.line[0] + 1, e.line[1] - 1).join('\n');
-        } else if (e.column.length) {
-            let line = e.line - reductions[e.line - 1] - 1;
-            errorLocation = `${line}:${e.column[0]} - ${line}:${e.column[1]}`;
-            code = lines[e.line - 1];
-            for (let i = 0; i < e.column[0]; i++) {
-                cursor += ' ';
-            }
-            for (let i = e.column[0]; i < e.column[1]; i++) {
-                cursor += '~';
-            }
-        } else {
-            let line = e.line - reductions[e.line - 1] + 1;
-            errorLocation = `${line}:${e.column}`;
-            code = lines[e.line];
-            for (let i = 0; i < e.column - 1; i++) {
-                cursor += ' ';
-            }
-            cursor += '^';
-        }
+                return read(error.file).then((content) => {
+                    let lines = content.split('\n');
+                    let errorLocation;
+                    let code;
+                    let cursor = '';
 
-        console.error('\x1b[31m%s\x1b[0m', `\nError: ${file}:`);
-        console.error('\x1b[31m%s\x1b[0m', `[${errorLocation}] ${e.message}`);
-        if (code) {
-            console.error('\x1b[31m%s\x1b[0m', code);
-            console.error('\x1b[31m%s\x1b[0m', cursor);
-        }
+                    if (error.line.length && error.column.length) {
+                        let line1 = error.line[0] + 1;
+                        let line2 = error.line[1] + 1;
+                        errorLocation = `${line1}:${error.column[0]} - ${line2}:${error.column[1]}`;
+                        code = lines.slice(error.line[0] + 1, error.line[1] - 1).join('\n');
+                    } else if (error.column.length) {
+                        let line = error.line - 1;
+                        errorLocation = `${line}:${error.column[0]} - ${line}:${error.column[1]}`;
+                        code = lines[error.line - 1];
+                        for (let i = 0; i < error.column[0]; i++) {
+                            cursor += ' ';
+                        }
+                        for (let i = error.column[0]; i < error.column[1]; i++) {
+                            cursor += '~';
+                        }
+                    } else {
+                        let line = error.line + 1;
+                        errorLocation = `${line}:${error.column}`;
+                        code = lines[error.line];
+                        for (let i = 0; i < error.column - 1; i++) {
+                            cursor += ' ';
+                        }
+                        cursor += '^';
+                    }
+
+                    return {
+                        file: error.file,
+                        location: errorLocation,
+                        message: error.message,
+                        code,
+                        cursor
+                    }
+                });
+            });
+
+            return Promise.all(errorPromises);
+        }).then((errors) => {
+            if (!errors.length) {
+                console.error('\x1b[31m%s\x1b[0m', `\nError: ${e.message}`);
+            }
+            ;
+
+            errors.forEach((error) => {
+                console.error('\x1b[31m%s\x1b[0m', `\n${error.file}:`);
+                console.error('\x1b[31m%s\x1b[0m', `[${error.location}] ${error.message}`);
+
+                if (error.code) {
+                    console.error('\x1b[31m%s\x1b[0m', error.code);
+                    console.error('\x1b[31m%s\x1b[0m', error.cursor);
+                }
+            });
+        })
     });
 }
 
@@ -978,12 +1008,12 @@ function getHTMLObject(object, indent = 0) {
     return html;
 }
 
-function recursivelyInclude(file) {
-    let prePath = file.split(/\/|\\/);
+function recursivelyInclude(_file) {
+    let prePath = _file.split(/\/|\\/);
     prePath.pop();
     prePath = prePath.join('/');
 
-    return read(file).then((fileContent) => {
+    return read(_file).then((fileContent) => {
         let start = fileContent.indexOfCode('*include');
         let promises = [];
         let replacements = [];
@@ -994,7 +1024,9 @@ function recursivelyInclude(file) {
             /* eslint-disable no-unused-vars */
             let [name, path] = includeString.split(/:/);
             if (!path) {
-                throw {message: '*include directive is invalid'};
+                throw {
+                    message: '*include directive is invalid'
+                };
             }
 
             path = path.replace(/'/g, '').trim();
@@ -1004,11 +1036,11 @@ function recursivelyInclude(file) {
             start = fileContent.indexOfCode('*include', end);
         }
 
-
         return Promise.all(promises).then((files) => {
             files = files.map((file) => {
                 if (includedFiles_[file.file]) {
                     file.content = '';
+                    file.file = _file;
                 } else {
                     includedFiles_[file.file] = 1;
                 }
@@ -1016,26 +1048,11 @@ function recursivelyInclude(file) {
                 return file;
             });
 
-            let lastReduction = 0;
             for (let i = files.length - 1; i >= 0; i--) {
-                let [line] = tools.calculateLineColumn(fileContent, replacements[i].start);
                 fileContent = fileContent.slice(0, replacements[i].start) + files[i].content + fileContent.slice(replacements[i].end + 1);
-                let includeLinesCount = files[i].content.split('\n').length;
-                line += includeLinesCount;
-                lastReduction = lastReduction + includeLinesCount - 1;
-                reductions[line] = lastReduction;
             }
 
-            lastReduction = 0;
-            for (let i = 0; i < fileContent.length; i++) {
-                if (!reductions[i]) {
-                    reductions[i] = lastReduction;
-                } else {
-                    lastReduction = reductions[i]
-                }
-            }
-
-            return {content: fileContent, file};
+            return {content: fileContent, file: _file};
         });
     });
 }
@@ -1165,16 +1182,12 @@ function replaceVariable(content, variableName, isProtected, local = true) {
 }
 
 function isGraphicalClass(clss) {
-    if (!clss) {
+    if (!clss || !classes_[clss]) {
         return false;
     }
 
     if (htmlTags[clss]) {
         return true;
-    }
-
-    if (!classes_[clss]) {
-        throw {message: `The class ${clss} is not found. Probably it is not included.`};
     }
 
     let parentsAreGraphical = classes_[clss].parents.map((parent) => isGraphicalClass(parent));

@@ -7,7 +7,6 @@ const file = process.argv[2];
 const fs = require('fs');
 const tools = require('./tools');
 const jsHint = require('jshint').JSHINT;
-let prePath = '';
 
 if (process.argv.length === 3) {
     analyseFile(`./${file}`);
@@ -25,23 +24,20 @@ function analyseFile(file) {
      * 7. Define global parameters
      */
 
-    let pathSplit = file.split('/');
-    pathSplit.pop();
-    prePath = `${pathSplit.join('/')}`;
-
     // 1. Read the file
     fs.readFile(file, (error, content) => {
         if (error) {
             return console.error(error)
         }
         content = content.toString();
-        console.log(JSON.stringify(analyse(content)));
+        console.log(JSON.stringify(analyse(file, content), null, 4));
     });
 }
 
-function analyse(_content, _includedFiles = {}) {
+function analyse(_file, _content, includedErrors = false) {
     let classMap = {};
     let errors = [];
+    let warnings = [];
 
     let content = _content;
 
@@ -64,33 +60,47 @@ function analyse(_content, _includedFiles = {}) {
         let value = content.slice(valueStart, valueEnd);
 
         let includeContent;
+
+        let pathSplit = _file.split('/');
+        pathSplit.pop();
+        let prePath = `${pathSplit.join('/')}`;
+
         try {
-            if (_includedFiles[value]) {
-                includeContent = _includedFiles[value];
-            } else {
-                includeContent = fs.readFileSync(`${prePath}/${value}`).toString();
-            }
+            includeContent = fs.readFileSync(`${prePath}/${value}`).toString();
         } catch (e) {
             let [line1, column1] = tools.calculateLineColumn(content, valueStart);
             let [line2, column2] = tools.calculateLineColumn(content, valueEnd);
             errors.push({
                 message: 'Included file does not exist',
                 line: line1 === line2 ? line1 : [line1, line2],
-                column: [column1, column2]
+                column: [column1, column2],
+                file: _file,
+                level: 'error'
             });
         }
         if (includeContent) {
-            let result = analyse(includeContent);
+            let result = analyse(`${prePath}/${value}`, includeContent, includedErrors);
             Object.assign(classMap, result.classes);
 
             if (result.errors.length) {
                 let [line1, column1] = tools.calculateLineColumn(content, index);
                 let [line2, column2] = tools.calculateLineColumn(content, originalEnd);
+                [line1, line2, column1, column2] = [line1, line2, column1, column2].map((value) => value + 1);
                 errors.push({
-                    message: 'Included file is not valid nazca code',
+                    message: 'Included file contains errors',
                     line: line1 === line2 ? line1 : [line1, line2],
-                    column: [column1, column2]
+                    column: [column1, column2],
+                    code: 'erroredInclude',
+                    file: _file
                 });
+            }
+
+            if (includedErrors && result.errors.length) {
+                errors = errors.concat(result.errors);
+            }
+
+            if (result.warnings.length) {
+                warnings = warnings.concat(result.warnings);
             }
         }
 
@@ -102,7 +112,7 @@ function analyse(_content, _includedFiles = {}) {
     index = 0;
     while (!finished) {
         try {
-            let classes = tools.getClassMap(content, index);
+            let classes = tools.getClassMap(_file, content, index);
             Object.assign(classMap, classes);
             finished = true;
         } catch (e) {
@@ -125,12 +135,16 @@ function analyse(_content, _includedFiles = {}) {
             if (!result) {
                 jsHint.errors.forEach((err) => {
                     let [line] = tools.calculateLineColumn(content, cls.methods.public[method].boundaries[0]);
-                    let error = {
+                    let warning = {
                         message: err.reason,
                         line: line + err.line,
-                        column: err.character
+                        column: err.character,
+                        file: cls.file,
+                        level: 'warning'
                     };
-                    errors.push(error);
+                    if (_file === cls.file) {
+                        warnings.push(warning);
+                    }
                 });
             }
         }
@@ -143,7 +157,7 @@ function analyse(_content, _includedFiles = {}) {
     index = 0;
     while (!finished) {
         try {
-            let children = tools.getChildren(content, index);
+            let children = tools.getChildren(_file, content, index);
             finished = true;
             hierarchy = hierarchy.concat(children);
         } catch (e) {
@@ -154,12 +168,16 @@ function analyse(_content, _includedFiles = {}) {
     }
 
     // 7. Define global parameters
-    getChildNames(content, global, hierarchy, errors);
+    getChildNames(_file, content, global, hierarchy, errors);
 
-    return {classes: classMap, errors, global};
+    if (!includedErrors) {
+        errors = errors.filter((err) => !err || err.file === _file);
+    }
+
+    return {classes: classMap, global, warnings, errors};
 }
 
-function getChildNames(content, global, children, errors = []) {
+function getChildNames(_file, content, global, children, errors = []) {
     for (let i = 0, n = children.length; i < n; i++) {
         let name = children[i].name;
         if (name) {
@@ -171,7 +189,8 @@ function getChildNames(content, global, children, errors = []) {
                     message: `Duplicate global name is found`,
                     line,
                     column: [column, columnEnd],
-                    index: children[i].start
+                    index: children[i].start,
+                    file: _file
                 });
             } else {
                 global[name] = children[i];
@@ -179,7 +198,7 @@ function getChildNames(content, global, children, errors = []) {
         }
 
         if (children[i].children.length) {
-            getChildNames(content, global, children[i].children, errors);
+            getChildNames(_file, content, global, children[i].children, errors);
         }
     }
 }
