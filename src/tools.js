@@ -825,7 +825,7 @@ function findIncludesRecursively(file) {
 function indexOfClassDeclaration(content, index = 0) {
     while (true) {
         index = content.indexOfCode('class ', index);;
-        if (index < 0) {
+        if (index <= 0) {
             return index;
         }
 

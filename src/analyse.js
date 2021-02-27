@@ -5,6 +5,7 @@
 
 const file = process.argv[2];
 const fs = require('fs');
+const path_ = require('path');
 const tools = require('./tools');
 const jsHint = require('jshint').JSHINT;
 
@@ -61,12 +62,12 @@ function analyse(_file, _content, includedErrors = false) {
 
         let includeContent;
 
-        let pathSplit = _file.split('/');
-        pathSplit.pop();
-        let prePath = `${pathSplit.join('/')}`;
+        let prePath = _file.split(/\/|\\/);
+        prePath.pop();
+        prePath = prePath.join('/');
 
         try {
-            includeContent = fs.readFileSync(`${prePath}/${value}`).toString();
+            includeContent = fs.readFileSync(path_.join(prePath, value)).toString();
         } catch (e) {
             let [line1, column1] = tools.calculateLineColumn(content, valueStart);
             let [line2, column2] = tools.calculateLineColumn(content, valueEnd);
@@ -79,7 +80,7 @@ function analyse(_file, _content, includedErrors = false) {
             });
         }
         if (includeContent) {
-            let result = analyse(`${prePath}/${value}`, includeContent, includedErrors);
+            let result = analyse(path_.join(prePath, value), includeContent, includedErrors);
             Object.assign(classMap, result.classes);
 
             if (result.errors.length) {
