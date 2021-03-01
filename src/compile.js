@@ -1182,12 +1182,12 @@ function replaceVariable(content, variableName, isProtected, local = true) {
 }
 
 function isGraphicalClass(clss) {
-    if (!clss || !classes_[clss]) {
-        return false;
-    }
-
     if (htmlTags[clss]) {
         return true;
+    }
+
+    if (!clss || !classes_[clss]) {
+        return false;
     }
 
     let parentsAreGraphical = classes_[clss].parents.map((parent) => isGraphicalClass(parent));

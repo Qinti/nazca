@@ -71,6 +71,7 @@ function analyse(_file, _content, includedErrors = false) {
         } catch (e) {
             let [line1, column1] = tools.calculateLineColumn(content, valueStart);
             let [line2, column2] = tools.calculateLineColumn(content, valueEnd);
+            [line1, line2] = [line1, line2].map((value) => value + 1);
             errors.push({
                 message: 'Included file does not exist',
                 line: line1 === line2 ? line1 : [line1, line2],
@@ -86,7 +87,7 @@ function analyse(_file, _content, includedErrors = false) {
             if (result.errors.length) {
                 let [line1, column1] = tools.calculateLineColumn(content, index);
                 let [line2, column2] = tools.calculateLineColumn(content, originalEnd);
-                [line1, line2, column1, column2] = [line1, line2, column1, column2].map((value) => value + 1);
+                [line1, line2] = [line1, line2].map((value) => value + 1);
                 errors.push({
                     message: 'Included file contains errors',
                     line: line1 === line2 ? line1 : [line1, line2],
@@ -186,6 +187,7 @@ function getChildNames(_file, content, global, children, errors = []) {
                 let line = tools.calculateLineColumn(content, children[i].start);
                 let column = tools.calculateLineColumn(content, children[i].start);
                 let columnEnd = content.indexOf('\n');
+                line++;
                 errors.push({
                     message: `Duplicate global name is found`,
                     line,
