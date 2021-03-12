@@ -5,15 +5,18 @@
  */
 
 const fs = require('fs');
-const compile = require('./src/compile').compileAll;
-const compileFile = require('./src/compile').compile;
 
 if (process.argv.length < 3) {
+    const compile = require('./src/compile').compileAll;
+
     compile();
 } else if (process.argv.length === 3 && ['init', 'help', 'watch'].includes(process.argv[2])) {
     if (process.argv[2] === 'init') {
         init();
     } else if (process.argv[2] === 'watch') {
+        const compileFile = require('./src/compile').compile;
+        const compile = require('./src/compile').compileAll;
+
         const tools = require('./src/tools');
         let includes = {};
         let reverseNames = {};

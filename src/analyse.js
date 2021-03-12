@@ -9,7 +9,7 @@ const path_ = require('path');
 const tools = require('./tools');
 const jsHint = require('jshint').JSHINT;
 
-if (process.argv.length === 3) {
+if (process.argv.length === 3 && !['init', 'help', 'watch'].includes(process.argv[2])) {
     analyseFile(`./${file}`);
 }
 
