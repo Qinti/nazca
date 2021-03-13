@@ -148,7 +148,7 @@ function init() {
  * It is a json file with block and a line comments
  */
 {
-    "name": "${name}"
+    "name": "${name}",
     /*
         "sources" shows what nazca files correspond to what css/html/js in form of
         "fileName": "path/to/nazca/file.nazca"
