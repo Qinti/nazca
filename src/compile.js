@@ -403,14 +403,14 @@ function compile(file, name, out, beautify) {
     });
 }
 
-function getJSFromHierarchy(object, local = false, className, parentVariables) {
+function getJSFromHierarchy(object, local = false, className, parentVariables, shouldGenerate = false) {
     let body = '';
     let variableIsSet = false;
     className = className || tools.nextID();
 
     function shouldGenerate(object) {
         // local hierarchy of the class
-        if (local) {
+        if (local || shouldGenerate) {
             return true;
         }
         // has name
@@ -675,8 +675,12 @@ function getClassCode(className, clss, elementID = null) {
                     .concat(Object.keys(classes_[parent].methods.public))
                     .filter((value) => !!value && value !== 'constructor');
 
-                body += `var {${protectedVariables.join(', ')}} = __nazcaThis.__nazcaProtected;\n`;
-                body += `var {${publicVariables.join(', ')}} = __nazcaThis;\n`;
+                if (protectedVariables.length) {
+                    body += `var {${protectedVariables.join(', ')}} = __nazcaThis.__nazcaProtected;\n`;
+                }
+                if (publicVariables.length) {
+                    body += `var {${publicVariables.join(', ')}} = __nazcaThis;\n`;
+                }
             }
         });
     }
@@ -886,7 +890,7 @@ function getClassCode(className, clss, elementID = null) {
     clss.children.forEach((child) => {
         let id = tools.nextID();
         let js = getJSFromHierarchy(child, !elementID, id,
-            Object.assign({}, clss.variables.protected, clss.variables.public, clss.attributes, clss.css));
+            Object.assign({}, clss.variables.protected, clss.variables.public, clss.attributes, clss.css), true);
 
         if (js) {
             body += js;
