@@ -170,11 +170,76 @@ function init() {
 }
 `;
 
+    let indexNazca = `
+.html {
+    .head {
+        .title {
+            text: Welcome to the world of Nazca;
+        };
+    };
+    
+    .body {
+        font-size: 13pt;
+        
+        .div {
+            width: 300px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 5px double #aaa;
+            padding: 10px;
+            text-align: center;
+
+            .img {
+                width: 100%;
+                $src: https://raw.githubusercontent.com/Qinti/nazca/master/logo/NazcaLogo.png;
+            };
+            
+            .div {
+                html: The project is initialized, but is not functional yet.<br>Come back later!;
+            };
+            .div {
+                text-align: right;
+                padding-top: 35px;
+                font-size: 9pt;
+    
+                text: Powered by;
+                .a {
+                    color: #38742e;
+                    font-weight: bold;
+
+                    text: Nazca;
+                    $href: https://github.com/Qinti/nazca;
+                };
+            };
+        };
+    };
+};
+`;
     fs.writeFile('.nazca', defaultNazcaConfig, (err) => {
         if (err) {
-            console.error(err);
-        } else {
-            console.log('.nazca is initialized');
+            return console.error(err);
         }
+
+        fs.mkdir('nazca', (err) => {
+            if (err && err.code !== 'EEXIST') {
+                return console.error(err);
+            }
+
+            fs.writeFile('.nazca', defaultNazcaConfig, (err) => {
+                if (err) {
+                    return console.error(err);
+                }
+
+                fs.writeFile('nazca/index.nazca', indexNazca, (err) => {
+                    if (err) {
+                        return console.error(err);
+                    }
+
+                    console.log('.nazca is initialized');
+                });
+            });
+        });
     });
 }

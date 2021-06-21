@@ -403,14 +403,14 @@ function compile(file, name, out, beautify) {
     });
 }
 
-function getJSFromHierarchy(object, local = false, className, parentVariables, shouldGenerate = false) {
+function getJSFromHierarchy(object, local = false, className, parentVariables, _shouldGenerate = false) {
     let body = '';
     let variableIsSet = false;
     className = className || tools.nextID();
 
     function shouldGenerate(object) {
         // local hierarchy of the class
-        if (local || shouldGenerate) {
+        if (local || _shouldGenerate) {
             return true;
         }
         // has name
