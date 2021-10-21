@@ -37,6 +37,7 @@ Table of Contents
     - [Custom events](#custom-events)
     - [Hierarchy access](#hierarchy-access)
     - [Going native](#going-native)
+    - [Import a module](#import-a-module)
     - [Conclusion note](#conclusion-note)
 
 ## Installation
@@ -1007,12 +1008,38 @@ class NativeTester < div {
 
 .html {
     .body {
-        .NativeTest;
+        .NativeTester;
     };
 };
 ```  
 
 `native` in the code above is used to access `getContext()` method of the `canvas` native element.
+
+#### Import a module
+You can import any ES6 module installed with `npm` and use it in your nazca code.  
+Install the module through the command line. Let's use an example module for this.
+```shell script
+npm i nazca-logo-3d
+```  
+This is an example module that builds the 3D version of the nazca logo into an element on the page.  
+We can call it using `*import` directive - `*import <module_name> = <npm_name>;`
+```
+*import: Logo = nazca-logo-3d;
+
+.html {
+    .head {
+        .title {
+            text: Welcome to the world of Nazca;
+        };
+    };
+    
+    body {
+        constructor: () {
+            new Logo(native);
+        };
+    };
+};
+```
 
 #### Conclusion note
 Nazca is a new project that could not reach it's full potential yet. While it covers all of HTML generation and you 

@@ -1,4 +1,5 @@
 const fs = require('fs');
+const copydir = require('copy-dir');
 const path_ = require('path');
 const parse = require('./parseHTML');
 const tools = require('./tools');
@@ -32,7 +33,8 @@ let content_;
  * 7. Go though the classes - generate functions (JS classes)
  * 8. Search for *json, add <script> to the hierarchy
  * 9. Create global objects from hierarchy
- * 10. Write html, css, js file for each page
+ * 10. Go through all *import statements, import modules globally
+ * 11. Write html, css, js file for each page
  */
 
 let configLoadPromise = new Promise((resolve, reject) => {
@@ -207,7 +209,7 @@ function compile(file, name, out, beautify) {
         /* eslint-disable no-useless-escape */
         let fileName = name.replace(/[\/\\]/g, '');
 
-        root.addToHead(`<script src="/${out.js}/${fileName}.js" type="application/javascript"></script>`);
+        root.addToHead(`<script src="/${out.js}/${fileName}.js" type="module"></script>`);
         root.addToHead(`<link rel="stylesheet" type="text/css" href="/${out.css}/${fileName}.css">`);
 
         html_ = root.html;
@@ -270,7 +272,42 @@ function compile(file, name, out, beautify) {
 
         js_ += `});\n`;
     }).then(() => {
-        // 10. Write html, css, js file for each page
+        //  10. Go through all *import statements, import modules globally
+        let imports = tools.getListOfImports(file, content_);
+        let moduleCount=0;
+        imports.forEach(({name, value}) => {
+            let mainFile = '';
+            try {
+                let packageData = JSON.parse(fs.readFileSync(`node_modules/${value}/package.json`).toString());
+                try {
+                    fs.mkdirSync(`${out.path}/modules`)
+                } catch (e) {
+                }
+
+                mainFile = packageData.module || packageData.main || packageData['index.js'] || packageData['index.json'] || packageData['index.node'];
+                if (!mainFile) {
+                    throw new Error(`The main include file is not found for ${value}`);
+                }
+
+                let mainPath = `./node_modules/${value}`;
+
+                copydir.sync(mainPath, `${out.path}/modules/${value}`);
+            } catch (e) {
+                throw new Error(`Module ${value} is not found. Please install it with npm and use the module name`);
+            }
+
+            js_ += `import * as __nazcaModule_${moduleCount} from '/modules/${value}/${mainFile}';\n`;
+            js_ += `let ${name};\n`;
+            js_ += `if (__nazcaModule_${moduleCount}.default) {\n`;
+            js_ += `    ${name} = __nazcaModule_${moduleCount}.default;\n`;
+            js_ += `} else {\n`;
+            js_ += `    ${name} = __nazcaModule_${moduleCount}\n`;
+            js_ += `}\n`;
+            moduleCount++;
+        });
+
+    }).then(() => {
+        // 11. Write html, css, js file for each page
         function writeCallback(err) {
             if (err) {
                 console.error(err);

@@ -641,11 +641,12 @@ function getChildren(_file, content, index = 0) {
     const reClass = /^class /;
     const reComment = /^\/\//;
     const reBlockComment = /^\/\*/;
+    const reImport = /^\*import/;
     let children = [];
 
     let nextWord = content.slice(index).trim();
     while (index >= 0 && nextWord) {
-        if (reInclude.test(nextWord) || reJSON.test(nextWord)) {
+        if (reInclude.test(nextWord) || reJSON.test(nextWord) || reImport.test(nextWord)) {
             index = content.indexOfCode(';', index) + 1;
         } else if (reFontFace.test(nextWord)) {
             let openingBracket = content.indexOfCode('{', index);
@@ -688,7 +689,7 @@ function getChildren(_file, content, index = 0) {
             let [line1, column1] = calculateLineColumn(content, index);
             let [line2, column2] = calculateLineColumn(content, nextSemiColon);
             throw {
-                message: `The statement is not recognized. Should be *include, *json, *font-face, class or hierarchy`,
+                message: `The statement is not recognized. Should be *include, *json, *font-face, *import, class or hierarchy`,
                 line: line1 === line2 ? line1 : [line1, line2],
                 column: [column1, column2],
                 index: nextSemiColon + 1,
@@ -754,7 +755,7 @@ function getListOfJSONFiles(_file, content) {
             let [line2, column2] = calculateLineColumn(content, valueEnd);
 
             throw {
-                message: `*json directive is invalid. Should be in format of '*json: objectName=path/to/file.json;'`,
+                message: `*json directive is invalid. Should be in format of '*json: objectName = path/to/file.json;'`,
                 line: line1 === line2 ? line1 : [line1, line2],
                 column: [column1, column2],
                 index: valueEnd,
@@ -768,6 +769,39 @@ function getListOfJSONFiles(_file, content) {
     }
 
     return jsonFiles;
+}
+
+function getListOfImports(_file, content) {
+    let importIndex = 0;
+    importIndex = content.indexOfCode('*import', importIndex);
+    let imports = [];
+    while (importIndex >= 0) {
+        let valueStart = content.indexOfCode(':', importIndex);
+        let valueEnd = content.indexOfCode(';', importIndex);
+        let importValue = content.slice(valueStart + 1, valueEnd).trim();
+        let name = importValue.split('=');
+        let value = name[1].trim();
+        name = name[0].trim();
+
+        if (!name || !value) {
+            let [line1, column1] = calculateLineColumn(content, importValue);
+            let [line2, column2] = calculateLineColumn(content, valueEnd);
+
+            throw {
+                message: `*import directive is invalid. Should be in format of '*import: globalModuleName = npm_module_name;'`,
+                line: line1 === line2 ? line1 : [line1, line2],
+                column: [column1, column2],
+                index: valueEnd,
+                file: _file,
+                level: 'error'
+            }
+        }
+
+        imports.push({name, value});
+        importIndex = content.indexOfCode('*import', valueEnd);
+    }
+
+    return imports;
 }
 
 function makeVariable(str) {
@@ -846,6 +880,7 @@ module.exports = {
     getChildren,
     resetID,
     getListOfJSONFiles,
+    getListOfImports,
     makeVariable,
     flattenNazcaConfig,
     findIncludesRecursively,
