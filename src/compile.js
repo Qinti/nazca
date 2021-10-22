@@ -280,7 +280,8 @@ function compile(file, name, out, beautify) {
             try {
                 let packageData = JSON.parse(fs.readFileSync(`node_modules/${value}/package.json`).toString());
                 try {
-                    fs.mkdirSync(`${out.path}/modules`)
+                    fs.mkdirSync(out.path);
+                    fs.mkdirSync(`${out.path}/modules`);
                 } catch (e) {
                 }
 
