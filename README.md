@@ -24,7 +24,7 @@ Table of Contents
     - [Styled "Hello world"](#styled-hello-world)
     - [Going classy](#going-classy)
     - [Separating the file](#separating-the-file)
-    - [Let's do something!](#let-s-do-something)
+    - [Let's do something!](#lets-do-something)
     - [Construction](#construction)
     - [Event handlers](#event-handlers)
     - [Getters and Setters](#getters-and-setters)
