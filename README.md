@@ -690,7 +690,7 @@ class Animal {
     live: () {};
 }; 
 
-class Mammal < Amnimal {
+class Mammal < Animal {
     -name: Mammal;
     #canwalk: () {};
     drinkMilk: () {};
@@ -1022,7 +1022,7 @@ Install the module through the command line. Let's use an example module for thi
 npm i nazca-logo-3d
 ```  
 This is an example module that builds the 3D version of the nazca logo into an element on the page.  
-We can call it using `*import` directive - `*import <module_name> = <npm_name>;`
+We can call it using `*import` directive - `*import: <module_name> = <npm_name>;`
 ```
 *import: Logo = nazca-logo-3d;
 
