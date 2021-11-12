@@ -170,7 +170,13 @@ const properties = [
     'visibility',
     'cursor',
     'box-shadow',
-    'box-sizing'
+    'box-sizing',
+    'grid-template-columns',
+    'grid-template-rows',
+    'grid-row-start',
+    'grid-column-start',
+    'grid-row-end',
+    'grid-column-end'
 ];
 
 let propertyMap = {};
